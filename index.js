@@ -74,10 +74,12 @@ deletePlayerState = async(connection, gameId, playerId) => {
 
 
 setPlayerState = async(connection, gameId, playerId, state) => {
-    await deletePlayerState(connection,gameId,playerId);
-    const query = `INSERT INTO PLAYER_STATES (PLAYER_ID, GAME_ID, STATE) ` +
-        `VALUES(${playerId},${gameId},${state});`;
-    return await executeQuery(connection,query);
+    await deletePlayerState(connection,gameId,playerId).then(async (result) => {
+        const query = `INSERT INTO PLAYER_STATES (PLAYER_ID, GAME_ID, STATE) ` +
+            `VALUES(${playerId},${gameId},${state});`;
+        return await executeQuery(connection,query);
+    })
+
 }
 
 
@@ -358,8 +360,8 @@ const getBets = async(connection, queryObj) => {
         if (queryObj.RACE_ID && queryObj.GAME_ID) {
             query = `${selFields} ` +
                 `WHERE RACE_ID=${queryObj.RACE_ID} AND GAME_ID=${queryObj.GAME_ID}`;
-            if (!queryObj.PLAYER_ID) {
-                query += ` AND PLAYER_ID=${queryObject.PLAYER_ID};`;
+            if (queryObj.PLAYER_ID) {
+                query += ` AND PLAYER_ID=${queryObj.PLAYER_ID};`;
             }
             else {
                 query += ';';
@@ -889,6 +891,30 @@ app.get('/bets/game/:gameId/race/:raceId', async(req,resp) => {
     }
 });
 
+
+
+/**
+ * set state for a player
+ */
+app.post('/plyrState/:playerId/game/:gameId/state/:stateVal', async(req,resp) => {
+    const gameId = req.params.gameId;
+    const playerId = req.params.playerId;
+    const state = req.params.stateVal;
+    const connection = await getConnection();
+    try {
+        await setPlayerState(connection,gameId,playerId,state).catch( err => {
+            console.log("Error fetching bets: " + err);
+            resp.send();
+        }).then((data) => {
+            resp.send(data);
+        });
+    } finally {
+        connection.release();
+    }
+});
+
+
+
 /**
  * Retrieve bets for a player for a race
  */
@@ -909,26 +935,6 @@ app.get('/bets/game/:gameId/race/:raceId/player/:playerId', async(req,resp) => {
     }
 });
 
-
-/**
- * set state for a player
- */
-app.post('/playerState/:playerId/game/:gameId', async(req,resp) => {
-    const gameId = req.params.gameId;
-    const playerId = req.params.playerId;
-    const state = req.body.state;
-    const connection = await getConnection();
-    try {
-        await setPlayerState(connection,gameId,playerId,state).catch( err => {
-            console.log("Error fetching bets: " + err);
-            resp.send();
-        }).then((data) => {
-            resp.send(data);
-        });
-    } finally {
-        connection.release();
-    }
-});
 
 /**
  * get count of players with particular state

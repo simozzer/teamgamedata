@@ -49,7 +49,7 @@ executeQuery = async(connection,query) => {
 }
 
 getGames = async (connection) => {
-   const query = 'SELECT ID, NAME FROM GAMES';
+   const query = 'SELECT ID, NAME, STATE, MEETING_INDEX, RACE_INDEX FROM GAMES';
    return await executeQuery(connection,query);
 }
 
@@ -59,33 +59,47 @@ getUsers = async (connection) => {
 }
 
 getGame = async (connection,id) => {
-    const query = 'SELECT ID,NAME FROM GAMES WHERE ID=' + id + ';';
+    const query = 'SELECT ID,NAME, STATE, MEETING_INDEX, RACE_INDEX FROM GAMES WHERE ID=' + id + ';';
     let rows =  await executeQuery(connection,query);
     if (rows) {
         return rows[0];
     }
-  //TODO
 }
+
+
+deletePlayerState = async(connection, gameId, playerId) => {
+    const query = `DELETE FROM PLAYER_STATES WHERE PLAYER_ID=${playerId} AND GAME_ID=${gameId};`;
+    return await executeQuery(connection, query);
+}
+
+
+setPlayerState = async(connection, gameId, playerId, state) => {
+    await deletePlayerState(connection,gameId,playerId);
+    const query = `INSERT INTO PLAYER_STATES (PLAYER_ID, GAME_ID, STATE) ` +
+        `VALUES(${playerId},${gameId},${state});`;
+    return await executeQuery(connection,query);
+}
+
+
+getPlayerCountWithState = async(connection, gameId, state) => {
+    const query  = `SELECT COUNT(*) AS COUNT FROM PLAYER_STATES ` +
+        `WHERE PLAYER_ID IN (SELECT PLAYER_ID FROM GAME_PLAYERS where GAME_ID=${gameId} AND STATE=${state});`;
+    return await executeQuery(connection,query);
+}
+
+
 
 deleteGame = async(connection, name) => {
   const query = `DELETE FROM GAMES WHERE NAME="${name}";`;
   return await executeQuery(connection,query);
 }
 
-gameExists = async (connection, name) => {
-    //TODO
-}
-
-playerExists = async (connection, gameName, playerName) => {
-    //TODO
-}
-
 addGame = async (connection, name) => {
-    let query = `INSERT INTO GAMES (NAME,STATE) VALUES ("${name.toUpperCase()}",0);`;
+    let query = `INSERT INTO GAMES (NAME,STATE, MEETING_INDEX, RACE_INDEX) VALUES ("${name.toUpperCase()}",0,-1,-1);`;
     let result = await executeQuery(connection,query);
     if (result) {
         console.log(result);
-        query = `SELECT ID, NAME FROM GAMES WHERE ID = (SELECT LAST_INSERT_ID());`;
+        query = `SELECT ID, NAME, STATE, MEETING_INDEX, RACE_INDEX FROM GAMES WHERE ID = (SELECT LAST_INSERT_ID());`;
         result = await executeQuery(connection, query);
         if (result) {
             return result;
@@ -113,6 +127,7 @@ addPlayerToGame = async (connection, gameId, playerId) => {
     return await executeQuery(connection,query);
 }
 
+
 getPlayersInGame = async(connection,gameId) => {
     const query = `SELECT GAME_PLAYERS.PLAYER_ID, GAME_PLAYERS.FUNDS, U.NAME as NAME FROM GAME_PLAYERS
     INNER JOIN USERS U on GAME_PLAYERS.PLAYER_ID = U.ID
@@ -121,10 +136,6 @@ getPlayersInGame = async(connection,gameId) => {
     return await executeQuery(connection,query);
 }
 
-
-userExists = async (connection, name) => {
-  //TODO
-}
 
 addUser = async (connection, username, password, isAdmin) => {
     let query = `INSERT INTO USERS (NAME,PASSWORD) VALUES ("${username.toUpperCase()}","${password}");`;
@@ -139,9 +150,11 @@ addUser = async (connection, username, password, isAdmin) => {
     }
 }
 
+
 updateUser = async (connection, userObj) => {
     //TODO
 }
+
 
 /**
  * Removes a named player from a named game
@@ -167,6 +180,7 @@ authenticate =  async (connection,userName,password) => {
     }
 }
 
+
 getHorsesForPlayer = async (connection, gameId, playerId) => {
     const query = `SELECT H.ID, H.NAME, H.HORSE_TYPE, H.SPEED_FACTOR, H.SLOWER_SPEED_FACTOR, H.ENERGY_FALL_DISTANCE FROM HORSES H
         INNER JOIN HORSE_OWNERSHIP HO on H.ID = HO.HORSE_ID
@@ -174,7 +188,14 @@ getHorsesForPlayer = async (connection, gameId, playerId) => {
     return await executeQuery(connection,query)
 }
 
-
+/**
+ * Save player horse selections for a meeting
+ * @param connection
+ * @param gameId
+ * @param playerId
+ * @param horses
+ * @returns {Promise<boolean>}
+ */
 saveHorsesForPlayer = async (connection, gameId, playerId, horses) => {
     //TODO... delete horses currently assigned, not just the relationship
     let query = `DELETE FROM HORSES WHERE HORSES.ID IN (SELECT HORSE_ID FROM HORSE_OWNERSHIP where GAME_ID = ${gameId} and PLAYER_ID = ${playerId});`;
@@ -205,6 +226,22 @@ saveHorsesForPlayer = async (connection, gameId, playerId, horses) => {
     }
 
     return true;
+}
+
+/**
+ * Get player horse selections for a meeting
+ * @param connection
+ * @param meetingId
+ * @param gameId
+ * @param playerID
+ * @returns {Promise<*>}
+ */
+getPlayerHorsesForMeeting = async(connection, meetingId, gameId, playerId) => {
+    const query = `SELECT RACE_ID, HORSE_ID as ID, H.NAME FROM HORSES_IN_RACE ` +
+        `INNER JOIN HORSES H on HORSES_IN_RACE.HORSE_ID = H.ID ` +
+        `WHERE HORSES_IN_RACE.RACE_ID IN (SELECT RACE_ID from MEETINGS WHERE ID=${meetingId}) ` +
+        `AND HORSES_IN_RACE.PLAYER_ID = ${playerId} AND HORSES_IN_RACE.GAME_ID = ${gameId};`;
+    return await executeQuery(connection,query);
 }
 
 /**
@@ -241,9 +278,16 @@ getRacesInMeeting = async(connection, meetingId) => {
     return await executeQuery(connection,query);
 }
 
+getRaceInfo = async(connection, raceId) => {
+    const query = `SELECT ID, NAME,LENGTH_FURLONGS,PRIZE FROM RACES WHERE ID=${raceId};`
+    return await executeQuery(connection,query);
+}
+
+
 getHorsesForRace = async(connection, gameId, raceId) => {
-    const query = `SELECT HR.HORSE_ID as ID, H.NAME, HR.PLAYER_ID AS PLAYER_ID FROM HORSES_IN_RACE HR ` +
+    const query = `SELECT HR.HORSE_ID as ID, H.NAME, H.HORSE_TYPE, H.SPEED_FACTOR, H.SLOWER_SPEED_FACTOR, H.ENERGY_FALL_DISTANCE, HR.PLAYER_ID, U.NAME as PLAYER_NAME FROM HORSES_IN_RACE HR ` +
         `INNER JOIN HORSES H on HR.HORSE_ID = H.ID ` +
+        'INNER JOIN USERS U ON HR.PLAYER_ID = U.ID ' +
         `WHERE HR.RACE_ID = ${raceId} AND HR.GAME_ID = ${gameId};`
     return await executeQuery(connection,query);
 }
@@ -259,6 +303,75 @@ addHorseToRace = async(connection, gameId, raceId, horseId, playerId) => {
         ` VALUES ( ${gameId}, ${raceId}, ${horseId}, ${playerId} );`;
     return await executeQuery(connection,query);
 }
+
+getMeetingSelectionsReady = async(connection,meetingId, gameId) => {
+    let query = `SELECT COUNT( DISTINCT PLAYER_ID) as C from HORSES_IN_RACE WHERE GAME_ID = ${gameId} ` +
+        `AND RACE_ID IN (SELECT RACE_ID FROM MEETING_RACES WHERE MEETING_ID = ${meetingId});`;
+    let playersWithSelectionsCount = 0;
+    return await executeQuery(connection,query).catch( (err) => {
+        console.log("Error getting count of selections made for meeting: " + err);
+        return false;
+    }).then( async (response) => {
+        console.log('here');
+        playersWithSelectionsCount = response[0].C;
+        query = `SELECT COUNT(PLAYER_ID) as C FROM GAME_PLAYERS WHERE GAME_ID = ${gameId};`;
+        return await executeQuery(connection,query).catch((err) => {
+            console.log("Error getting count of selections made for meeting: " + err);
+            return false;
+        }).then((response) => {
+            if (response[0].C === playersWithSelectionsCount) {
+                return {result:true};
+            }
+        })
+    })
+}
+
+clearBet = async(connection,betObject) => {
+    const query = `DELETE FROM BETS WHERE ` +
+        `PLAYER_ID = ${betObject.PLAYER_ID} AND HORSE_ID=${betObject.HORSE_ID} ` +
+        `AND RACE_ID=${betObject.RACE_ID} AND GAME_ID=${betObject.GAME_ID} AND TYPE=${betObject.TYPE};`;
+    return await executeQuery(connection,query);
+}
+
+storeBet = async(connection, betObject) => {
+    await clearBet(connection,betObject);
+    if (betObject && (betObject.AMOUNT)) {
+        const query = `INSERT INTO BETS (PLAYER_ID, HORSE_ID, RACE_ID, GAME_ID, AMOUNT, TYPE, ODDS) VALUES ` +
+            `(${betObject.PLAYER_ID},${betObject.HORSE_ID},${betObject.RACE_ID},${betObject.GAME_ID},` +
+            `${betObject.AMOUNT},${betObject.TYPE},${betObject.ODDS});`;
+        return await executeQuery(connection, query);
+    } else {
+        return true; // set value to zero not need to insert
+    }
+}
+
+const getBets = async(connection, queryObj) => {
+    let query;
+    const selFields = 'SELECT B.PLAYER_ID, U.NAME as PLAYER_NAME, B.HORSE_ID, H.NAME as HORSE_NAME, ' +
+        'B.RACE_ID, B.GAME_ID, B.AMOUNT, B.TYPE, B.ODDS FROM BETS B ' +
+        'INNER JOIN USERS U on B.PLAYER_ID = U.ID ' +
+        'INNER JOIN HORSES H on B.HORSE_ID = H.ID ' +
+        'INNER JOIN RACES R on B.RACE_ID = R.ID ';
+    if (!queryObj) {
+        query = `${selFields};`;
+    } else {
+        if (queryObj.RACE_ID && queryObj.GAME_ID) {
+            query = `${selFields} ` +
+                `WHERE RACE_ID=${queryObj.RACE_ID} AND GAME_ID=${queryObj.GAME_ID}`;
+            if (!queryObj.PLAYER_ID) {
+                query += ` AND PLAYER_ID=${queryObject.PLAYER_ID};`;
+            }
+            else {
+                query += ';';
+            }
+        }
+    }
+    if (query) {
+        return await executeQuery(connection,query);
+    }
+
+}
+
 
 
 /**
@@ -280,10 +393,12 @@ app.post('/authenticate', async (req,res) => {;
     }
 });
 
+
 //app.use(express.bodyParser());
 app.get('/', (req, res) => {
     res.send('Hello from App Enginey!');
 });
+
 
 /**
  * Get a list of current games
@@ -297,6 +412,7 @@ app.get('/games', async (req, res) => {
          connection.release()
     }
 });
+
 
 /**
  * Get the details for a game
@@ -389,6 +505,7 @@ app.post('/game/:gameId/players', async (req,res) => {
 
 });
 
+
 /**
  * Get the players in a game
  */
@@ -404,6 +521,7 @@ app.get('/game/:id/players', async (req,res) => {
     }
 
 });
+
 
 /**
  * Update details of a player in the game
@@ -428,6 +546,7 @@ app.put('/game/:gameName/players', async (req,res) => {
     }
 });
 
+
 /**
  * Delete a player from a game
  */
@@ -447,6 +566,7 @@ app.delete(`/game/:gameId/players/:playerId`, async (req,res) => {
 
 });
 
+
 /**
  * Get a list of users
  */
@@ -459,7 +579,6 @@ app.get('/users', async(req,res) => {
         connection.release()
     }
 });
-
 
 
 /**
@@ -519,6 +638,7 @@ app.get("/game/:gameId/horsesFor/:playerId", async(req,res) => {
         connection.release()
     }
 });
+
 
 /**
  * Get horses in race
@@ -582,6 +702,29 @@ app.post("/game/:gameId/horsesFor/:playerId", async(req,res) => {
     }
 });
 
+
+/**
+ * Get selected player horses for meeting
+ */
+app.get("/playerHorseSelection/:gameId/:playerId/:meetingId", async(req,res) => {
+    let gameId = req.params.gameId;
+    let playerId = req.params.playerId;
+    let meetingId = req.params.meetingId;
+
+    let connection = await getConnection();
+    try {
+        await getPlayerHorsesForMeeting(connection,meetingId,gameId,playerId).then((response) => {
+            res.send(response);
+        }).catch((err) => {
+            console.log("error getting horses for player: " + err);
+            return false;
+        });
+    } finally {
+        connection.release()
+    }
+});
+
+
 /**
  * Get horse form
  * @type {string|number}
@@ -601,6 +744,7 @@ app.get("/game/:gameId/horseForm/:horseId", async (req,res) => {
         connection.release()
     }
 });
+
 
 /**
  * Get all bets from game
@@ -623,6 +767,7 @@ app.get("/game/:gameId/bets/:raceId", async (req,res) => {
     }
 });
 
+
 /**
  * Get all meetings
  */
@@ -640,6 +785,7 @@ app.get("/meetings", async(req,res) => {
    }
 });
 
+
 /**
  * Get races in meeting
  */
@@ -650,7 +796,7 @@ app.get("/meeting/:meetingId", async(req,res) => {
     try {
         await getRacesInMeeting(connection,meetingId).then((response) => {
             res.send(response);
-            connection.release()
+            // connection.release()
         }).catch((err) => {
             console.log("Error getting horses for player: " + err);
             return false;
@@ -659,6 +805,151 @@ app.get("/meeting/:meetingId", async(req,res) => {
         connection.release()
     }
 });
+
+
+/**
+ * Get information for a particular race
+ */
+app.get("/raceInfo/:raceId", async(req,res) => {
+    let raceId = req.params.raceId;
+
+    let connection = await getConnection();
+    try {
+        await getRaceInfo(connection,raceId).then((response) => {
+            res.send(response[0]);
+            // connection.release()
+        }).catch((err) => {
+            console.log("Error getting horses for player: " + err);
+            return false;
+        });
+    } finally {
+        connection.release()
+    }
+});
+
+
+/**
+ * Return true if all players have finished choosing horses
+ */
+app.get(`/meetingSelectionsReady/:meetingId/game/:gameId`, async(req,resp) => {
+    let meetingId = req.params.meetingId;
+    let gameId = req.params.gameId;
+    let connection = await getConnection();
+    try {
+        await getMeetingSelectionsReady(connection, meetingId, gameId).then((response) => {
+            resp.send(response);
+            // connection.release()
+        }).catch((err) => {
+            console.log("Error getting horses for player: " + err);
+            return false;
+        });
+    } finally {
+        connection.release()
+    }
+});
+
+
+/**
+ * Store a bet for a player
+ * @type {string|number}
+ */
+app.post('/bets', async(req,resp) => {
+    const betObj = req.body;
+    const connection = await getConnection();
+    try {
+        await storeBet(connection,betObj).catch((err) => {
+            console.log("Error storing bet: " + err);
+            resp.send(false);
+        }).then((data) => {
+            if (data) {
+                resp.send(true);
+            }
+        });
+    } finally {
+        connection.release();
+    }
+});
+
+/**
+ * Retrieve bets for a race
+ */
+app.get('/bets/game/:gameId/race/:raceId', async(req,resp) => {
+    const gameId = req.params.gameId;
+    const raceId = req.params.raceId;
+    const connection = await getConnection();
+    try {
+        await getBets(connection, {GAME_ID:gameId, RACE_ID: raceId}).catch((err) => {
+            console.log("Error fetching bets: " + err);
+            resp.send();
+        }).then((data) => {
+           resp.send(data);
+        });
+    } finally {
+        connection.release();
+    }
+});
+
+/**
+ * Retrieve bets for a player for a race
+ */
+app.get('/bets/game/:gameId/race/:raceId/player/:playerId', async(req,resp) => {
+    const gameId = req.params.gameId;
+    const raceId = req.params.raceId;
+    const playerId = req.params.playerId;
+    const connection = await getConnection();
+    try {
+        await getBets(connection, {GAME_ID:gameId, RACE_ID: raceId, PLAYER_ID: playerId}).catch((err) => {
+            console.log("Error fetching bets: " + err);
+            resp.send();
+        }).then((data) => {
+            resp.send(data);
+        });
+    } finally {
+        connection.release();
+    }
+});
+
+
+/**
+ * set state for a player
+ */
+app.post('/playerState/:playerId/game/:gameId', async(req,resp) => {
+    const gameId = req.params.gameId;
+    const playerId = req.params.playerId;
+    const state = req.body.state;
+    const connection = await getConnection();
+    try {
+        await setPlayerState(connection,gameId,playerId,state).catch( err => {
+            console.log("Error fetching bets: " + err);
+            resp.send();
+        }).then((data) => {
+            resp.send(data);
+        });
+    } finally {
+        connection.release();
+    }
+});
+
+/**
+ * get count of players with particular state
+ */
+app.get('/playerStates/:gameId/state/:state', async(req,resp) => {
+    const gameId = req.params.gameId;
+    const state = req.params.state;
+    const connection = await getConnection();
+    try {
+        await getPlayerCountWithState(connection,gameId,state).catch( err => {
+            console.log("Error fetching bets: " + err);
+            resp.send();
+        }).then((data) => {
+            resp.send(data[0]);
+        });
+    } finally {
+        connection.release();
+    }
+});
+
+
 
 
 // Listen to the App Engine-specified port, or 8080 otherwise

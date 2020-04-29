@@ -1,0 +1,327 @@
+create schema if not exists teamGames collate latin1_swedish_ci;
+
+create table if not exists GAMES
+(
+	ID int auto_increment
+		primary key,
+	NAME varchar(255) not null,
+	STATE int not null,
+	MEETING_INDEX int default -1 not null,
+	RACE_INDEX int default -1 not null,
+	constraint NAME
+		unique (NAME)
+);
+
+create table if not exists HORSES
+(
+	ID int auto_increment
+		primary key,
+	NAME varchar(255) not null,
+	HORSE_TYPE int not null,
+	SPEED_FACTOR float not null,
+	SLOWER_SPEED_FACTOR float not null,
+	ENERGY_FALL_DISTANCE decimal not null,
+	constraint NAME
+		unique (NAME)
+);
+
+create table if not exists MEETINGS
+(
+	ID int auto_increment
+		primary key,
+	NAME varchar(255) not null,
+	IMAGE_URL varchar(1024) default '' null
+);
+
+create table if not exists GAME_MEETINGS
+(
+	GAME_ID int not null,
+	MEETING_ID int not null,
+	primary key (GAME_ID, MEETING_ID),
+	constraint GAME_MEETINGS_ibfk_1
+		foreign key (GAME_ID) references GAMES (ID)
+			on delete cascade,
+	constraint GAME_MEETINGS_ibfk_2
+		foreign key (MEETING_ID) references MEETINGS (ID)
+			on delete cascade
+);
+
+create index MEETING_ID
+	on GAME_MEETINGS (MEETING_ID);
+
+create table if not exists RACES
+(
+	ID int auto_increment
+		primary key,
+	NAME varchar(255) not null,
+	LENGTH_FURLONGS int not null,
+	PRIZE int default 1 not null
+);
+
+create table if not exists HORSE_FORM
+(
+	HORSE_ID int not null,
+	RACE_ID int not null,
+	GAME_ID int not null,
+	POSITION int not null,
+	RACE_INDEX int not null,
+	primary key (HORSE_ID, RACE_ID, GAME_ID),
+	constraint HORSE_FORM_ibfk_1
+		foreign key (HORSE_ID) references HORSES (ID)
+			on delete cascade,
+	constraint HORSE_FORM_ibfk_2
+		foreign key (RACE_ID) references RACES (ID)
+			on delete cascade,
+	constraint HORSE_FORM_ibfk_3
+		foreign key (GAME_ID) references GAMES (ID)
+			on delete cascade
+);
+
+create index GAME_ID
+	on HORSE_FORM (GAME_ID);
+
+create index RACE_ID
+	on HORSE_FORM (RACE_ID);
+
+create table if not exists MEETING_RACES
+(
+	MEETING_ID int not null,
+	RACE_ID int not null,
+	constraint MEETING_RACES_ibfk_1
+		foreign key (MEETING_ID) references MEETINGS (ID)
+			on delete cascade,
+	constraint MEETING_RACES_ibfk_2
+		foreign key (RACE_ID) references RACES (ID)
+			on delete cascade
+);
+
+create index MEETING_ID
+	on MEETING_RACES (MEETING_ID);
+
+create index RACE_ID
+	on MEETING_RACES (RACE_ID);
+
+create table if not exists ROLES
+(
+	ID int auto_increment
+		primary key,
+	NAME varchar(255) not null,
+	constraint NAME
+		unique (NAME)
+);
+
+create table if not exists USERS
+(
+	ID int auto_increment
+		primary key,
+	NAME varchar(255) not null,
+	PASSWORD varchar(255) not null,
+	constraint NAME
+		unique (NAME)
+);
+
+create table if not exists GAME_PLAYERS
+(
+	GAME_ID int not null,
+	PLAYER_ID int not null,
+	FUNDS int not null,
+	primary key (GAME_ID, PLAYER_ID),
+	constraint GAME_PLAYERS_ibfk_1
+		foreign key (GAME_ID) references GAMES (ID)
+			on delete cascade,
+	constraint GAME_PLAYERS_ibfk_2
+		foreign key (PLAYER_ID) references USERS (ID)
+			on delete cascade
+);
+
+create table if not exists BETS
+(
+	PLAYER_ID int not null,
+	HORSE_ID int not null,
+	RACE_ID int not null,
+	GAME_ID int not null,
+	AMOUNT int not null,
+	TYPE int not null,
+	ODDS decimal not null,
+	primary key (PLAYER_ID, HORSE_ID, RACE_ID, GAME_ID, TYPE),
+	constraint BETS_ibfk_1
+		foreign key (PLAYER_ID) references USERS (ID)
+			on delete cascade,
+	constraint BETS_ibfk_2
+		foreign key (HORSE_ID) references HORSES (ID)
+			on delete cascade,
+	constraint BETS_ibfk_3
+		foreign key (RACE_ID) references RACES (ID)
+			on delete cascade,
+	constraint BETS_ibfk_4
+		foreign key (GAME_ID) references GAMES (ID)
+			on delete cascade,
+	constraint BETS_ibfk_5
+		foreign key (GAME_ID, PLAYER_ID) references GAME_PLAYERS (GAME_ID, PLAYER_ID)
+			on delete cascade
+);
+
+create index HORSE_ID
+	on BETS (HORSE_ID);
+
+create index PLAYER_ID
+	on BETS (PLAYER_ID, GAME_ID);
+
+create index RACE_ID
+	on BETS (RACE_ID);
+
+create index PLAYER_ID
+	on GAME_PLAYERS (PLAYER_ID);
+
+create table if not exists HORSES_IN_RACE
+(
+	GAME_ID int not null,
+	RACE_ID int not null,
+	HORSE_ID int not null,
+	PLAYER_ID int not null,
+	primary key (GAME_ID, RACE_ID, HORSE_ID, PLAYER_ID),
+	constraint ONE_HORSE_PER_PLAYER_PER_RACE
+		unique (GAME_ID, PLAYER_ID, HORSE_ID),
+	constraint HORSES_IN_RACE_ibfk_1
+		foreign key (GAME_ID) references GAMES (ID)
+			on delete cascade,
+	constraint HORSES_IN_RACE_ibfk_2
+		foreign key (RACE_ID) references RACES (ID)
+			on delete cascade,
+	constraint HORSES_IN_RACE_ibfk_3
+		foreign key (HORSE_ID) references HORSES (ID)
+			on delete cascade,
+	constraint HORSES_IN_RACE_ibfk_4
+		foreign key (GAME_ID, PLAYER_ID) references GAME_PLAYERS (GAME_ID, PLAYER_ID)
+			on delete cascade
+);
+
+create index HORSE_ID
+	on HORSES_IN_RACE (HORSE_ID);
+
+create index RACE_ID
+	on HORSES_IN_RACE (RACE_ID);
+
+create table if not exists HORSE_OWNERSHIP
+(
+	HORSE_ID int not null
+		primary key,
+	GAME_ID int not null,
+	PLAYER_ID int not null,
+	constraint HORSE_OWNERSHIP_ibfk_1
+		foreign key (HORSE_ID) references HORSES (ID)
+			on delete cascade,
+	constraint HORSE_OWNERSHIP_ibfk_2
+		foreign key (GAME_ID) references GAMES (ID)
+			on delete cascade,
+	constraint HORSE_OWNERSHIP_ibfk_3
+		foreign key (PLAYER_ID) references USERS (ID)
+			on delete cascade
+);
+
+create index GAME_ID
+	on HORSE_OWNERSHIP (GAME_ID);
+
+create index PLAYER_ID
+	on HORSE_OWNERSHIP (PLAYER_ID);
+
+create table if not exists PLAYER_STATES
+(
+	PLAYER_ID int not null,
+	GAME_ID int not null,
+	STATE int default -1 not null,
+	primary key (PLAYER_ID, GAME_ID),
+	constraint PLAYER_STATES_ibfk_1
+		foreign key (PLAYER_ID) references USERS (ID)
+			on delete cascade,
+	constraint PLAYER_STATES_ibfk_2
+		foreign key (GAME_ID) references GAMES (ID)
+			on delete cascade
+);
+
+create index GAME_ID
+	on PLAYER_STATES (GAME_ID);
+
+create table if not exists USER_ROLES
+(
+	USER_ID int not null,
+	ROLE_ID int not null,
+	primary key (USER_ID, ROLE_ID),
+	constraint USER_ROLES_ibfk_1
+		foreign key (USER_ID) references USERS (ID)
+			on delete cascade,
+	constraint USER_ROLES_ibfk_2
+		foreign key (ROLE_ID) references ROLES (ID)
+			on delete cascade
+);
+
+create index ROLE_ID
+	on USER_ROLES (ROLE_ID);
+
+
+INSERT INTO MEETINGS (NAME) VALUES('Doncaster');
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Flying Childers Stakes", 5, 100);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='Doncaster'),(SELECT LAST_INSERT_ID()));
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("St Ledger", 16, 100);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='Doncaster'),(SELECT LAST_INSERT_ID()));
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Park Hill Stakes", 7, 100);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='Doncaster'),(SELECT LAST_INSERT_ID()));
+INSERT INTO MEETINGS (NAME) VALUES('New Market');
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("2000 Guineas", 8, 150);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='New Market'),(SELECT LAST_INSERT_ID()));
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Challenge Stakes", 7, 150);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='New Market'),(SELECT LAST_INSERT_ID()));
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Abernant Stakes", 6, 150);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='New Market'),(SELECT LAST_INSERT_ID()));
+INSERT INTO MEETINGS (NAME) VALUES('Chester');
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Chester Cup", 16, 200);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='Chester'),(SELECT LAST_INSERT_ID()));
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Chester Vase", 8, 200);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='Chester'),(SELECT LAST_INSERT_ID()));
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Huxley Stakes", 8, 200);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='Chester'),(SELECT LAST_INSERT_ID()));
+INSERT INTO MEETINGS (NAME) VALUES('York');
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Musidora Stakes",308);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='York'),(SELECT LAST_INSERT_ID()));
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Yorkshire Oaks", 308);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='York'),(SELECT LAST_INSERT_ID()));
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Nunthorpe Stakes", 300);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='York'),(SELECT LAST_INSERT_ID()));
+INSERT INTO MEETINGS (NAME) VALUES('Epsom');
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Derby", 8, 400);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='Epsom'),(SELECT LAST_INSERT_ID()));
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Oaks", 8, 400);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='Epsom'),(SELECT LAST_INSERT_ID()));
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Surrey Stakes", 8, 400);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='Epsom'),(SELECT LAST_INSERT_ID()));
+INSERT INTO MEETINGS (NAME) VALUES('Royal Ascot');
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Gold Cup", 16, 500);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='Royal Ascot'),(SELECT LAST_INSERT_ID()));
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Coronation Stakes", 500);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='Royal Ascot'),(SELECT LAST_INSERT_ID()));
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Diamond Jubilee Stakes", 500);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='Royal Ascot'),(SELECT LAST_INSERT_ID()));
+INSERT INTO MEETINGS (NAME) VALUES('Goodwood');
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Sussex Stakes", 1000);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='Goodwood'),(SELECT LAST_INSERT_ID()));
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Goodwood Cup", 1000);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='Goodwood'),(SELECT LAST_INSERT_ID()));
+INSERT INTO RACES (NAME,LENGTH_FURLONGS,PRIZE) VALUES ("Richmond Stakes", 1000);
+INSERT INTO MEETING_RACES (MEETING_ID, RACE_ID) VALUES ((SELECT ID FROM MEETINGS WHERE MEETINGS.NAME='Goodwood'),(SELECT LAST_INSERT_ID()));
+
+
+create table USER_STATE_TYPES (
+   ID int NOT NULL,
+   NAME varchar(50) NOT NULL,
+   PRIMARY KEY(ID)
+)
+INSERT INTO USER_STATE_TYPES (ID,NAME) VALUES(0,"START");
+INSERT INTO USER_STATE_TYPES (ID,NAME) VALUES(1,"CREATE_HORSES");
+INSERT INTO USER_STATE_TYPES (ID,NAME) VALUES(2,"SELECT_HORSES");
+INSERT INTO USER_STATE_TYPES (ID,NAME) VALUES(3,"PLACE_BETS");
+INSERT INTO USER_STATE_TYPES (ID,NAME) VALUES(4,"RACING");
+INSERT INTO USER_STATE_TYPES (ID,NAME) VALUES(5,"RACE_END");
+INSERT INTO USER_STATE_TYPES (ID,NAME) VALUES(6,"MEETING_END");
+
+
+

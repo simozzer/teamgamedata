@@ -295,15 +295,14 @@ getHorsesForRace = async(connection, gameId, raceId) => {
 }
 
 addHorseToRace = async(connection, gameId, raceId, horseId, playerId) => {
-
     // delete any existing entry
     let query = `DELETE FROM HORSES_IN_RACE WHERE GAME_ID = ${gameId} AND RACE_ID = ${raceId} and PLAYER_ID = ${playerId};`;
-    await executeQuery(connection,query);
-
-
-    query = `INSERT INTO HORSES_IN_RACE ( GAME_ID, RACE_ID, HORSE_ID, PLAYER_ID) ` +
-        ` VALUES ( ${gameId}, ${raceId}, ${horseId}, ${playerId} );`;
-    return await executeQuery(connection,query);
+    await executeQuery(connection,query).then(async () => {
+        // add entry
+        query = `INSERT INTO HORSES_IN_RACE ( GAME_ID, RACE_ID, HORSE_ID, PLAYER_ID) ` +
+            ` VALUES ( ${gameId}, ${raceId}, ${horseId}, ${playerId} );`;
+        return await executeQuery(connection,query);
+    });
 }
 
 getMeetingSelectionsReady = async(connection,meetingId, gameId) => {

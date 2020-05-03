@@ -136,7 +136,7 @@ addGame = async (connection, name) => {
  * @returns {Promise<any>}
  */
 addPlayerToGame = async (connection, gameId, playerId) => {
-    const query = `INSERT INTO GAME_PLAYERS (GAME_ID, PLAYER_ID) VALUES ( ${gameId}, ${playerId} );`
+    const query = `INSERT INTO GAME_PLAYERS (GAME_ID, PLAYER_ID, FUNDS) VALUES ( ${gameId}, ${playerId},0 );`
     return await executeQuery(connection,query);
 }
 

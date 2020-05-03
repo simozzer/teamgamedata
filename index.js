@@ -255,7 +255,10 @@ getPlayerHorsesForMeeting = async(connection, meetingId, gameId, playerId) => {
  * Get the form for a horse
  */
 getHorseForm = async (connection,gameId,horseId) => {
-    const query = `SELECT HORSE_ID, RACE_ID, POSITION, RACE_INDEX FROM HORSE_FORM where GAME_ID=${gameId} and HORSE_ID = ${horseId};`;
+    const query = `SELECT HORSE_ID, H.NAME as HORSE_NAME, RACE_ID, R.NAME as RACE_NAME, R.LENGTH_FURLONGS as LENGTH_FURLONGS, GAME_ID, POSITION, RACE_INDEX FROM HORSE_FORM ` +
+        `INNER JOIN RACES R on HORSE_FORM.RACE_ID = R.ID ` +
+        'INNER JOIN HORSES H on HORSE_FORM.HORSE_ID = H.ID ' +
+        `WHERE GAME_ID=${gameId} and HORSE_ID = ${horseId};`;
     return await executeQuery(connection,query);
 }
 

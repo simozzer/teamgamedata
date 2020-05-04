@@ -82,10 +82,10 @@ create table if not exists HORSE_FORM
 	GAME_ID int not null,
 	POSITION int not null,
 	RACE_INDEX int not null,
-	RACE_GOING int not null,
+	GOING int not null,
 	primary key (HORSE_ID, RACE_ID, GAME_ID),
 	constraint HORSE_FORM___fk_GOING
-		foreign key (RACE_GOING) references GOING_TYPES (ID),
+		foreign key (GOING) references GOING_TYPES (ID),
 	constraint HORSE_FORM_ibfk_1
 		foreign key (HORSE_ID) references HORSES (ID)
 			on delete cascade,
@@ -298,6 +298,10 @@ create table if not exists USER_STATE_TYPES
 	NAME varchar(50) not null
 );
 
+
+alter table HORSE_FORM ADD CONSTRAINT FOREIGN KEY (GOING) REFERENCES GOING_TYPES (ID) ON DELETE CASCADE;
+
+alter table HORSE_FORM ADD COLUMN GOING int not NULL DEFAULT 0;
 
 INSERT INTO teamGames.RACES (ID, NAME, LENGTH_FURLONGS, PRIZE) VALUES (1, 'Flying Childers Stakes', 5, 100);
 INSERT INTO teamGames.RACES (ID, NAME, LENGTH_FURLONGS, PRIZE) VALUES (2, 'St Ledger', 16, 100);

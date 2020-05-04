@@ -260,7 +260,7 @@ getPlayerHorsesForMeeting = async(connection, meetingId, gameId, playerId) => {
  * Get the form for a horse
  */
 getHorseForm = async (connection,gameId,horseId) => {
-    const query = `SELECT HORSE_ID, H.NAME as HORSE_NAME, RACE_ID, R.NAME as RACE_NAME, R.LENGTH_FURLONGS as LENGTH_FURLONGS, GAME_ID, POSITION, RACE_GOING, RACE_INDEX FROM HORSE_FORM ` +
+    const query = `SELECT HORSE_ID, H.NAME as HORSE_NAME, RACE_ID, R.NAME as RACE_NAME, R.LENGTH_FURLONGS as LENGTH_FURLONGS, GAME_ID, POSITION, GOING, RACE_INDEX FROM HORSE_FORM ` +
         `INNER JOIN RACES R on HORSE_FORM.RACE_ID = R.ID ` +
         'INNER JOIN HORSES H on HORSE_FORM.HORSE_ID = H.ID ' +
         `WHERE GAME_ID=${gameId} and HORSE_ID = ${horseId};`;
@@ -281,7 +281,7 @@ saveHorseForm = async(connection,gameId,raceId,horseId, position, going) => {
         return;
     }).then(async()=> {
         let raceIndex = 0;
-        const query = `INSERT INTO HORSE_FORM (HORSE_ID, RACE_ID, GAME_ID, POSITION, RACE_INDEX, RACE_GOING) ` +
+        const query = `INSERT INTO HORSE_FORM (HORSE_ID, RACE_ID, GAME_ID, POSITION, RACE_INDEX, GOING) ` +
             `VALUES (${horseId},${raceId},${gameId},${position},${raceIndex},${going});`;
         return await executeQuery(connection,query);
     })

@@ -143,13 +143,13 @@ addGame = async (connection, name) => {
  * @returns {Promise<any>}
  */
 addPlayerToGame = async (connection, gameId, playerId) => {
-    const query = `INSERT INTO GAME_PLAYERS (GAME_ID, PLAYER_ID, FUNDS) VALUES ( ${gameId}, ${playerId},0 );`
+    const query = `INSERT INTO GAME_PLAYERS (GAME_ID, PLAYER_ID, FUNDS ) VALUES ( ${gameId}, ${playerId},0);`
     return await executeQuery(connection,query);
 }
 
 
 getPlayersInGame = async(connection,gameId) => {
-    const query = `SELECT GAME_PLAYERS.PLAYER_ID, GAME_PLAYERS.FUNDS, U.NAME as NAME FROM GAME_PLAYERS
+    const query = `SELECT GAME_PLAYERS.PLAYER_ID, GAME_PLAYERS.FUNDS, U.NAME as NAME FROM GAME_PLAYERS  
     INNER JOIN USERS U on GAME_PLAYERS.PLAYER_ID = U.ID
     INNER JOIN GAMES G on GAME_PLAYERS.GAME_ID = G.ID
     WHERE G.ID = "${gameId}";`;

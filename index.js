@@ -100,8 +100,16 @@ getPlayerState = async(connection, gameId, playerId) => {
 }
 
 getPlayerCountWithState = async(connection, gameId, state) => {
-    const query  = `SELECT COUNT(*) as COUNT FROM PLAYER_STATES WHERE GAME_ID=${gameId} AND STATE = ${state};`;
-    return await executeQuery(connection,query);
+    let query  = `SELECT COUNT(*) as COUNT FROM PLAYER_STATES WHERE GAME_ID=${gameId} AND STATE = ${state};`;
+
+    let result = await executeQuery(connection,query);
+
+    query = `SELECT PLAYER_ID, U.NAME, STATE  FROM PLAYER_STATES PS ` +
+        `INNER JOIN USERS U on PS.PLAYER_ID = U.ID ` +
+        `WHERE GAME_ID=${gameId};`;
+
+    result[0].playerStates = await executeQuery(connection,query);
+    return result;
 }
 
 
@@ -187,7 +195,7 @@ authenticate =  async (connection,userName,password) => {
 
 
 getHorsesForPlayer = async (connection, gameId, playerId) => {
-    const query = `SELECT H.ID, H.NAME, H.HORSE_TYPE, H.SPEED_FACTOR, H.SLOWER_SPEED_FACTOR, H.ENERGY_FALL_DISTANCE FROM HORSES H
+    const query = `SELECT H.ID, H.NAME, H.HORSE_TYPE, H.SPEED_FACTOR, H.SLOWER_SPEED_FACTOR, H.ENERGY_FALL_DISTANCE, H.GOING_TYPE FROM HORSES H
         INNER JOIN HORSE_OWNERSHIP HO on H.ID = HO.HORSE_ID
         WHERE HO.PLAYER_ID = ${playerId} AND HO.GAME_ID = ${gameId}`;
     return await executeQuery(connection,query)
@@ -208,8 +216,8 @@ saveHorsesForPlayer = async (connection, gameId, playerId, horses) => {
     if (result) {
         // save each horse
         for (const horse of horses) {
-            query = `INSERT INTO HORSES (NAME, HORSE_TYPE, SPEED_FACTOR, SLOWER_SPEED_FACTOR, ENERGY_FALL_DISTANCE)` +
-                ` VALUES ( "${horse.NAME}", ${horse.HORSE_TYPE}, ${horse.SPEED_FACTOR}, ${horse.SLOWER_SPEED_FACTOR}, ${horse.ENERGY_FALL_DISTANCE});`;
+            query = `INSERT INTO HORSES (NAME, HORSE_TYPE, SPEED_FACTOR, SLOWER_SPEED_FACTOR, ENERGY_FALL_DISTANCE, GOING_TYPE)` +
+                ` VALUES ( "${horse.NAME}", ${horse.HORSE_TYPE}, ${horse.SPEED_FACTOR}, ${horse.SLOWER_SPEED_FACTOR}, ${horse.ENERGY_FALL_DISTANCE}, ${horse.GOING_TYPE});`;
             await executeQuery(connection,query).catch( (err) => {
                 throw "Failed to insert horse details: " + err;
             }).
@@ -241,7 +249,7 @@ saveHorsesForPlayer = async (connection, gameId, playerId, horses) => {
  * @returns {Promise<*>}
  */
 getPlayerHorsesForMeeting = async(connection, meetingId, gameId, playerId) => {
-    const query = `SELECT RACE_ID, HORSE_ID as ID, H.NAME FROM HORSES_IN_RACE ` +
+    const query = `SELECT RACE_ID, HORSE_ID as ID, H.NAME, H.GOING_TYPE FROM HORSES_IN_RACE ` +
         `INNER JOIN HORSES H on HORSES_IN_RACE.HORSE_ID = H.ID ` +
         `WHERE HORSES_IN_RACE.RACE_ID IN (SELECT RACE_ID from MEETINGS WHERE ID=${meetingId}) ` +
         `AND HORSES_IN_RACE.PLAYER_ID = ${playerId} AND HORSES_IN_RACE.GAME_ID = ${gameId};`;
@@ -252,7 +260,7 @@ getPlayerHorsesForMeeting = async(connection, meetingId, gameId, playerId) => {
  * Get the form for a horse
  */
 getHorseForm = async (connection,gameId,horseId) => {
-    const query = `SELECT HORSE_ID, H.NAME as HORSE_NAME, RACE_ID, R.NAME as RACE_NAME, R.LENGTH_FURLONGS as LENGTH_FURLONGS, GAME_ID, POSITION, RACE_INDEX FROM HORSE_FORM ` +
+    const query = `SELECT HORSE_ID, H.NAME as HORSE_NAME, RACE_ID, R.NAME as RACE_NAME, R.LENGTH_FURLONGS as LENGTH_FURLONGS, GAME_ID, POSITION, RACE_GOING, RACE_INDEX FROM HORSE_FORM ` +
         `INNER JOIN RACES R on HORSE_FORM.RACE_ID = R.ID ` +
         'INNER JOIN HORSES H on HORSE_FORM.HORSE_ID = H.ID ' +
         `WHERE GAME_ID=${gameId} and HORSE_ID = ${horseId};`;
@@ -267,14 +275,14 @@ deleteHorseForm = async(connection,gameId,raceId,horseId) => {
 /**
  * Save the form for a horse in a race
  */
-saveHorseForm = async(connection,gameId,raceId,horseId, position) => {
+saveHorseForm = async(connection,gameId,raceId,horseId, position, going) => {
     return await deleteHorseForm(connection,gameId,raceId,horseId).catch((err) => {
         console.log("error deleting horse form: " + err);
         return;
     }).then(async()=> {
         let raceIndex = 0;
-        const query = `INSERT INTO HORSE_FORM (HORSE_ID, RACE_ID, GAME_ID, POSITION, RACE_INDEX) ` +
-            `VALUES (${horseId},${raceId},${gameId},${position},${raceIndex});`;
+        const query = `INSERT INTO HORSE_FORM (HORSE_ID, RACE_ID, GAME_ID, POSITION, RACE_INDEX, RACE_GOING) ` +
+            `VALUES (${horseId},${raceId},${gameId},${position},${raceIndex},${going});`;
         return await executeQuery(connection,query);
     })
 
@@ -319,7 +327,7 @@ getRaceInfo = async(connection, raceId) => {
 
 
 getHorsesForRace = async(connection, gameId, raceId) => {
-    const query = `SELECT HR.HORSE_ID as ID, H.NAME, H.HORSE_TYPE, H.SPEED_FACTOR, H.SLOWER_SPEED_FACTOR, H.ENERGY_FALL_DISTANCE, HR.PLAYER_ID, U.NAME as PLAYER_NAME FROM HORSES_IN_RACE HR ` +
+    const query = `SELECT HR.HORSE_ID as ID, H.NAME, H.HORSE_TYPE, H.SPEED_FACTOR, H.SLOWER_SPEED_FACTOR, H.ENERGY_FALL_DISTANCE, H.GOING_TYPE, HR.PLAYER_ID, U.NAME as PLAYER_NAME FROM HORSES_IN_RACE HR ` +
         `INNER JOIN HORSES H on HR.HORSE_ID = H.ID ` +
         'INNER JOIN USERS U ON HR.PLAYER_ID = U.ID ' +
         `WHERE HR.RACE_ID = ${raceId} AND HR.GAME_ID = ${gameId};`
@@ -348,6 +356,17 @@ addHorseToRace = async(connection, gameId, raceId, horseId, playerId) => {
     });
 }
 
+getPlayersWithoutSelections = async(connection, meetingId, gameId) => {
+    const query = `SELECT PLAYER_ID, U2.NAME as PLAYER_NAME FROM GAME_PLAYERS G ` +
+        `INNER JOIN USERS U2 on G.PLAYER_ID = U2.ID ` +
+        `WHERE G.GAME_ID  = ${gameId} ` +
+        `AND G.PLAYER_ID not in (SELECT DISTINCT(PLAYER_ID) from HORSES_IN_RACE HIR ` +
+        `INNER JOIN USERS U on HIR.PLAYER_ID = U.ID ` +
+        `WHERE GAME_ID = ${gameId} ` +
+        `AND RACE_ID IN (SELECT RACE_ID FROM MEETING_RACES WHERE MEETING_ID = ${meetingId}));`;
+    return await executeQuery(connection,query);
+}
+
 getMeetingSelectionsReady = async(connection,meetingId, gameId) => {
     let query = `SELECT COUNT( DISTINCT PLAYER_ID) as C from HORSES_IN_RACE WHERE GAME_ID = ${gameId} ` +
         `AND RACE_ID IN (SELECT RACE_ID FROM MEETING_RACES WHERE MEETING_ID = ${meetingId});`;
@@ -361,9 +380,11 @@ getMeetingSelectionsReady = async(connection,meetingId, gameId) => {
         return await executeQuery(connection,query).catch((err) => {
             console.log("Error getting count of selections made for meeting: " + err);
             return false;
-        }).then((response) => {
+        }).then(async(response) => {
             if (response[0].C === playersWithSelectionsCount) {
-                return {result:true};
+                return {ready: true}
+            } else {
+                return getPlayersWithoutSelections(connection,meetingId, gameId);
             }
         })
     })
@@ -820,9 +841,10 @@ app.post("/game/:gameId/horseForm/:raceId/:horseId/:position", async (req,res) =
     let raceId = req.params.raceId;
     let horseId = req.params.horseId;
     let position = req.params.position;
+    let going = req.body.going;
     let connection = await getConnection();
     try {
-        await saveHorseForm(connection,gameId,raceId,horseId, position).then((response) => {
+        await saveHorseForm(connection,gameId,raceId,horseId, position, going).then((response) => {
             res.send(response);
         }).catch((err) => {
             console.log("error saving horse form");

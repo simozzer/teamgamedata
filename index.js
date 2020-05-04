@@ -122,7 +122,6 @@ addGame = async (connection, name) => {
     let query = `INSERT INTO GAMES (NAME,STATE, MEETING_INDEX, RACE_INDEX) VALUES ("${name.toUpperCase()}",0,0,0);`;
     let result = await executeQuery(connection,query);
     if (result) {
-        console.log(result);
         query = `SELECT ID, NAME, STATE, MEETING_INDEX, RACE_INDEX FROM GAMES WHERE ID = (SELECT LAST_INSERT_ID());`;
         return await executeQuery(connection,query);
     }
@@ -154,7 +153,6 @@ addUser = async (connection, username, password, isAdmin) => {
     let query = `INSERT INTO USERS (NAME,PASSWORD) VALUES ("${username.toUpperCase()}","${password}");`;
     let result = await executeQuery(connection,query);
     if (result) {
-        console.log(result);
         query = `SELECT ID, NAME FROM USERS WHERE ID = (SELECT LAST_INSERT_ID());`;
         result = await executeQuery(connection, query);
         if (result) {
@@ -206,7 +204,6 @@ getHorsesForPlayer = async (connection, gameId, playerId) => {
 saveHorsesForPlayer = async (connection, gameId, playerId, horses) => {
     //TODO... delete horses currently assigned, not just the relationship
     let query = `DELETE FROM HORSES WHERE HORSES.ID IN (SELECT HORSE_ID FROM HORSE_OWNERSHIP where GAME_ID = ${gameId} and PLAYER_ID = ${playerId});`;
-    console.log(query);
     let result = await executeQuery(connection,query);
     if (result) {
         // save each horse
@@ -272,7 +269,7 @@ deleteHorseForm = async(connection,gameId,raceId,horseId) => {
  */
 saveHorseForm = async(connection,gameId,raceId,horseId, position) => {
     return await deleteHorseForm(connection,gameId,raceId,horseId).catch((err) => {
-        console.log("error deleting horse form: " + error);
+        console.log("error deleting horse form: " + err);
         return;
     }).then(async()=> {
         let raceIndex = 0;
@@ -359,7 +356,6 @@ getMeetingSelectionsReady = async(connection,meetingId, gameId) => {
         console.log("Error getting count of selections made for meeting: " + err);
         return false;
     }).then( async (response) => {
-        console.log('here');
         playersWithSelectionsCount = response[0].C;
         query = `SELECT COUNT(PLAYER_ID) as C FROM GAME_PLAYERS WHERE GAME_ID = ${gameId};`;
         return await executeQuery(connection,query).catch((err) => {
@@ -534,7 +530,6 @@ app.put('/game/:id', async (req, res) => {
  * Add a new game, or update it if it already exists
  */
 app.post('/games', async (req,res) => {
-    console.log(req.body);;
     let connection =  await getConnection();
     try {
         if (!req.body.name) {
@@ -555,7 +550,6 @@ app.post('/games', async (req,res) => {
  * Add player to a game
  */
 app.post('/game/:gameId/players', async (req,res) => {
-    // console.log(req.body);;
     let connection =  await getConnection();
     try {
         let gameId = req.params.gameId;
@@ -581,7 +575,6 @@ app.post('/game/:gameId/players', async (req,res) => {
  * Get the players in a game
  */
 app.get('/game/:id/players', async (req,res) => {
-    // console.log(req.body);;
     let connection = await getConnection();
     try {
         let id = req.params.id;
@@ -598,7 +591,6 @@ app.get('/game/:id/players', async (req,res) => {
  * Update details of a player in the game
  */
 app.put('/game/:gameName/players', async (req,res) => {
-    // console.log(req.body);;
     let connection =  await getConnection();
     try {
         let gameName = req.params.gameName;
@@ -656,7 +648,6 @@ app.get('/users', async(req,res) => {
  * Add a new user, or throw an error if a game of the specified name already exists
  */
 app.post('/users', async (req,res) => {
-    console.log(req.body);;
     let connection =  await getConnection();
     try {
         let userName = req.body.username;
@@ -677,7 +668,6 @@ app.post('/users', async (req,res) => {
  * update a user
  */
 app.put('/users', async (req,res) => {
-    console.log(req.body);;
     let connection =  await getConnection();
     try {
         let userObj = req.body;
@@ -768,7 +758,7 @@ app.post("/game/:gameId/horsesFor/:playerId", async(req,res) => {
         await saveHorsesForPlayer(connection,gameId,playerId, horses).then((response) => {
             res.send(response);
         }).catch((err) => {
-            global.console.log("error getting horses for player");
+            console.log("error saving horses for player");
             return false;
         });
     } finally {
@@ -813,7 +803,7 @@ app.get("/game/:gameId/horseForm/:horseId", async (req,res) => {
         await getHorseForm(connection,gameId,horseId).then((response) => {
             res.send(response);
         }).catch((err) => {
-            console.log("error getting horses for player");
+            console.log("error getting horse form");
             return false;
         });
     } finally {
@@ -835,7 +825,7 @@ app.post("/game/:gameId/horseForm/:raceId/:horseId/:position", async (req,res) =
         await saveHorseForm(connection,gameId,raceId,horseId, position).then((response) => {
             res.send(response);
         }).catch((err) => {
-            console.log("error getting horses for player");
+            console.log("error saving horse form");
             return false;
         });
     } finally {
@@ -855,7 +845,7 @@ app.get("/game/:gameId/bets/:raceId", async (req,res) => {
         await getBetsForRace(connection, gameId, raceId).then((response) => {
             res.send(response);
         }).catch((err) => {
-            console.log("Error getting horses for player: " + err);
+            console.log("Error getting bets for game: " + err);
             return false;
         });
     } finally {
@@ -877,7 +867,7 @@ app.delete("/game/:gameId/bets/:raceId", async (req,res) => {
         await clearBetsForRace(connection, gameId, raceId).then((response) => {
             res.send(response);
         }).catch((err) => {
-            console.log("Error getting horses for player: " + err);
+            console.log("Error getting player bets for race: " + err);
             return false;
         });
     } finally {
@@ -916,7 +906,7 @@ app.get("/meeting/:meetingId", async(req,res) => {
             res.send(response);
             // connection.release()
         }).catch((err) => {
-            console.log("Error getting horses for player: " + err);
+            console.log("Error getting races in meeting: " + err);
             return false;
         });
     } finally {
@@ -937,7 +927,7 @@ app.get("/raceInfo/:raceId", async(req,res) => {
             res.send(response[0]);
             // connection.release()
         }).catch((err) => {
-            console.log("Error getting horses for player: " + err);
+            console.log("Error getting race information: " + err);
             return false;
         });
     } finally {
@@ -958,7 +948,7 @@ app.get(`/meetingSelectionsReady/:meetingId/game/:gameId`, async(req,resp) => {
             resp.send(response);
             // connection.release()
         }).catch((err) => {
-            console.log("Error getting horses for player: " + err);
+            console.log("Error getting meeting selections ready: " + err);
             return false;
         });
     } finally {
@@ -1039,7 +1029,7 @@ app.get('/plyrState/:playerId/game/:gameId', async(req,resp) => {
     const connection = await getConnection();
     try {
         await getPlayerState(connection,gameId,playerId).catch( err => {
-            console.log("Error fetching bets: " + err);
+            console.log("Error fetching player state: " + err);
             resp.send();
         }).then((data) => {
             resp.send(data);

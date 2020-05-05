@@ -1,4 +1,3 @@
-use teamGames;
 create schema if not exists teamGames collate latin1_swedish_ci;
 
 create table if not exists GAMES
@@ -30,7 +29,7 @@ create table if not exists HORSES
 	HORSE_TYPE int not null,
 	SPEED_FACTOR float not null,
 	SLOWER_SPEED_FACTOR float not null,
-	ENERGY_FALL_DISTANCE decimal not null,
+	ENERGY_FALL_DISTANCE float not null,
 	GOING_TYPE int default 0 not null,
 	constraint NAME
 		unique (NAME),
@@ -54,7 +53,11 @@ create table if not exists GAME_MEETINGS
 (
 	GAME_ID int not null,
 	MEETING_ID int not null,
+	GOING int not null,
+	MEETING_STATE int default 0 not null,
 	primary key (GAME_ID, MEETING_ID),
+	constraint GAME_MEETINGS___fk_GOING
+		foreign key (GOING) references GOING_TYPES (ID),
 	constraint GAME_MEETINGS_ibfk_1
 		foreign key (GAME_ID) references GAMES (ID)
 			on delete cascade,
@@ -297,6 +300,7 @@ create table if not exists USER_STATE_TYPES
 		primary key,
 	NAME varchar(50) not null
 );
+
 
 
 alter table HORSE_FORM ADD CONSTRAINT FOREIGN KEY (GOING) REFERENCES GOING_TYPES (ID) ON DELETE CASCADE;

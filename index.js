@@ -125,13 +125,31 @@ addGameMaster = async (connection, gameId, playerId) => {
     return await executeQuery(connection,query);
 }
 
+deleteMeetingData = async(connection, gameId) => {
+    const query=`DELETE from GAME_MEETINGS WHERE GAME_ID = ${gameId};`;
+    return await executeQuery(connection,query);
+}
+
+
+createMeetingData = async(connection, gameId) => {
+    const query= `INSERT INTO GAME_MEETINGS SELECT ${gameId} as GAME_ID, M.ID ,FLOOR(RAND()*3) as GOING, 0 as STATE FROM MEETINGS M;`;
+    return await executeQuery(connection,query);
+}
 
 addGame = async (connection, name) => {
     let query = `INSERT INTO GAMES (NAME,STATE, MEETING_INDEX, RACE_INDEX) VALUES ("${name.toUpperCase()}",0,0,0);`;
     let result = await executeQuery(connection,query);
     if (result) {
+
         query = `SELECT ID, NAME, STATE, MEETING_INDEX, RACE_INDEX FROM GAMES WHERE ID = (SELECT LAST_INSERT_ID());`;
-        return await executeQuery(connection,query);
+        result = await executeQuery(connection,query);
+        if (result) {
+            const gameId = result[0].ID;
+            await deleteMeetingData(connection,gameId);
+            await createMeetingData(connection,gameId);
+            return result;
+        }
+
     }
 }
 
@@ -309,8 +327,10 @@ clearBetsForRace = async (connection, gameId, raceId) => {
     return await executeQuery(connection,query);
 }
 
-getMeetings = async(connection) => {
-    const query = `SELECT ID, NAME FROM MEETINGS`;
+getMeetings = async(connection, gameId) => {
+    const query = `SELECT GM.MEETING_ID as ID, M.NAME AS NAME, GM.GOING, GM.MEETING_STATE from GAME_MEETINGS GM ` +
+    `INNER JOIN MEETINGS M ON GM.MEETING_ID = M.ID ` +
+    `WHERE GM.GAME_ID =${gameId};`;
     return await executeQuery(connection,query);
 }
 
@@ -320,8 +340,11 @@ getRacesInMeeting = async(connection, meetingId) => {
     return await executeQuery(connection,query);
 }
 
-getRaceInfo = async(connection, raceId) => {
-    const query = `SELECT ID, NAME,LENGTH_FURLONGS,PRIZE FROM RACES WHERE ID=${raceId};`
+getRaceInfo = async(connection, raceId, gameId) => {
+    const query = `select GM.MEETING_ID as ID, R.NAME as NAME, R.LENGTH_FURLONGS, R.PRIZE, GM.GOING, GM.MEETING_STATE from GAME_MEETINGS GM ` +
+        `inner join MEETING_RACES MR on GM.MEETING_ID = MR.MEETING_ID ` +
+        `inner join RACES R on GM.GAME_ID = R.ID ` +
+        `WHERE MR.RACE_ID = ${raceId} AND GM.GAME_ID = ${gameId};`;
     return await executeQuery(connection,query);
 }
 
@@ -723,6 +746,8 @@ app.get("/game/:gameId/horsesFor/:playerId", async(req,res) => {
 });
 
 
+
+
 /**
  * Get horses in race
  */
@@ -901,10 +926,11 @@ app.delete("/game/:gameId/bets/:raceId", async (req,res) => {
 /**
  * Get all meetings
  */
-app.get("/meetings", async(req,res) => {
+app.get("/meetings/:gameId", async(req,res) => {
    let connection = await getConnection();
+   let gameId = req.params.gameId;
    try {
-       await getMeetings(connection).then(async(response) => {
+       await getMeetings(connection, gameId).then(async(response) => {
            res.send(response);
        }).catch((err)=> {
            console.log("Error getting meetings: " + err);
@@ -936,26 +962,6 @@ app.get("/meeting/:meetingId", async(req,res) => {
     }
 });
 
-
-/**
- * Get information for a particular race
- */
-app.get("/raceInfo/:raceId", async(req,res) => {
-    let raceId = req.params.raceId;
-
-    let connection = await getConnection();
-    try {
-        await getRaceInfo(connection,raceId).then((response) => {
-            res.send(response[0]);
-            // connection.release()
-        }).catch((err) => {
-            console.log("Error getting race information: " + err);
-            return false;
-        });
-    } finally {
-        connection.release()
-    }
-});
 
 
 /**
@@ -1164,6 +1170,29 @@ app.post("/delHorse", async(req,res) => {
         connection.release()
     }
 });
+
+
+/**
+ * Get information for a particular race
+ */
+app.get("/RINFO/:raceId", async(req,res) => {
+    console.log("here");
+    let raceId = req.params.raceId;
+    let gameId = req.query.g;
+    let connection = await getConnection();
+    try {
+        await getRaceInfo(connection,raceId,gameId).then((response) => {
+            res.send(response[0]);
+            // connection.release()
+        }).catch((err) => {
+            console.log("Error getting race information: " + err);
+            return false;
+        });
+    } finally {
+        connection.release()
+    }
+});
+
 
 
 // Listen to the App Engine-specified port, or 8080 otherwise

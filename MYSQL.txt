@@ -23,8 +23,6 @@ FLUSH PRIVILEGES;
 exit
 
 mysql -u team -p
-
-use teamGames;
 create schema if not exists teamGames collate latin1_swedish_ci;
 
 create table if not exists GAMES
@@ -56,7 +54,7 @@ create table if not exists HORSES
 	HORSE_TYPE int not null,
 	SPEED_FACTOR float not null,
 	SLOWER_SPEED_FACTOR float not null,
-	ENERGY_FALL_DISTANCE decimal not null,
+	ENERGY_FALL_DISTANCE float not null,
 	GOING_TYPE int default 0 not null,
 	constraint NAME
 		unique (NAME),
@@ -80,7 +78,11 @@ create table if not exists GAME_MEETINGS
 (
 	GAME_ID int not null,
 	MEETING_ID int not null,
+	GOING int not null,
+	MEETING_STATE int default 0 not null,
 	primary key (GAME_ID, MEETING_ID),
+	constraint GAME_MEETINGS___fk_GOING
+		foreign key (GOING) references GOING_TYPES (ID),
 	constraint GAME_MEETINGS_ibfk_1
 		foreign key (GAME_ID) references GAMES (ID)
 			on delete cascade,
@@ -108,10 +110,10 @@ create table if not exists HORSE_FORM
 	GAME_ID int not null,
 	POSITION int not null,
 	RACE_INDEX int not null,
-	RACE_GOING int not null,
+	GOING int not null,
 	primary key (HORSE_ID, RACE_ID, GAME_ID),
 	constraint HORSE_FORM___fk_GOING
-		foreign key (RACE_GOING) references GOING_TYPES (ID),
+		foreign key (GOING) references GOING_TYPES (ID),
 	constraint HORSE_FORM_ibfk_1
 		foreign key (HORSE_ID) references HORSES (ID)
 			on delete cascade,
@@ -325,6 +327,7 @@ create table if not exists USER_STATE_TYPES
 );
 
 
+
 INSERT INTO teamGames.RACES (ID, NAME, LENGTH_FURLONGS, PRIZE) VALUES (1, 'Flying Childers Stakes', 5, 100);
 INSERT INTO teamGames.RACES (ID, NAME, LENGTH_FURLONGS, PRIZE) VALUES (2, 'St Ledger', 16, 100);
 INSERT INTO teamGames.RACES (ID, NAME, LENGTH_FURLONGS, PRIZE) VALUES (3, 'Park Hill Stakes', 7, 100);
@@ -377,7 +380,6 @@ INSERT INTO teamGames.MEETING_RACES (MEETING_ID, RACE_ID) VALUES (6, 18);
 INSERT INTO teamGames.MEETING_RACES (MEETING_ID, RACE_ID) VALUES (7, 19);
 INSERT INTO teamGames.MEETING_RACES (MEETING_ID, RACE_ID) VALUES (7, 20);
 INSERT INTO teamGames.MEETING_RACES (MEETING_ID, RACE_ID) VALUES (7, 21);
-
 
 
 INSERT INTO teamGames.GOING_TYPES(ID, NAME) VALUES(0,'FIRM');

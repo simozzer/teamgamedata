@@ -1,3 +1,30 @@
+/////
+////
+mysql -u root -p
+
+UPDATE mysql.user SET Password = PASSWORD('<< your value here>>') WHERE User = 'root';
+
+FLUSH PRIVILEGES;
+
+CREATE DATABASE teamGames;
+
+INSERT INTO mysql.user (User,Host,authentication_string,ssl_cipher,x509_issuer,x509_subject) VALUES('team','localhost',PASSWORD('team'),'','','');
+
+INSERT INTO mysql.user (User,Host,authentication_string,ssl_cipher,x509_issuer,x509_subject)
+VALUES('team','%',PASSWORD('team'),'','','');
+
+FLUSH PRIVILEGES;
+
+GRANT ALL PRIVILEGES ON teamGames.* to team@localhost identified by 'team';
+
+GRANT ALL PRIVILEGES ON teamGames.* to team@% identified by 'team';
+
+FLUSH PRIVILEGES;
+
+////
+////
+
+
 create schema if not exists teamGames collate latin1_swedish_ci;
 
 create table if not exists GAMES
@@ -8,6 +35,7 @@ create table if not exists GAMES
 	STATE int not null,
 	MEETING_INDEX int default -1 not null,
 	RACE_INDEX int default -1 not null,
+	OWNER_ID int not null,
 	constraint NAME
 		unique (NAME)
 );
@@ -193,19 +221,6 @@ create index PLAYER_ID
 create index RACE_ID
 	on BETS (RACE_ID);
 
-create table if not exists GAME_MASTERS
-(
-	GAME_ID int not null
-		primary key,
-	PLAYER_ID int not null,
-	constraint GAME_MASTERS_ibfk_1
-		foreign key (GAME_ID, PLAYER_ID) references GAME_PLAYERS (GAME_ID, PLAYER_ID)
-			on delete cascade
-);
-
-create index GAME_ID
-	on GAME_MASTERS (GAME_ID, PLAYER_ID);
-
 create index PLAYER_ID
 	on GAME_PLAYERS (PLAYER_ID);
 
@@ -302,10 +317,6 @@ create table if not exists USER_STATE_TYPES
 );
 
 
-
-alter table HORSE_FORM ADD CONSTRAINT FOREIGN KEY (GOING) REFERENCES GOING_TYPES (ID) ON DELETE CASCADE;
-
-alter table HORSE_FORM ADD COLUMN GOING int not NULL DEFAULT 0;
 
 INSERT INTO teamGames.RACES (ID, NAME, LENGTH_FURLONGS, PRIZE) VALUES (1, 'Flying Childers Stakes', 5, 100);
 INSERT INTO teamGames.RACES (ID, NAME, LENGTH_FURLONGS, PRIZE) VALUES (2, 'St Ledger', 16, 100);

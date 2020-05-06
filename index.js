@@ -50,7 +50,7 @@ executeQuery = async(connection,query) => {
 }
 
 getGames = async (connection) => {
-   const query = 'SELECT ID, NAME, STATE, MEETING_INDEX, RACE_INDEX FROM GAMES';
+   const query = 'SELECT ID, NAME, STATE, MEETING_INDEX, RACE_INDEX, OWNER_ID FROM GAMES';
    return await executeQuery(connection,query);
 }
 
@@ -60,8 +60,7 @@ getUsers = async (connection) => {
 }
 
 getGame = async (connection,id) => {
-    const query = `SELECT G.ID,G.NAME, G.STATE, G.MEETING_INDEX, G.RACE_INDEX, GM.PLAYER_ID as MASTER_PLAYER_ID FROM GAMES G ` +
-        `LEFT OUTER JOIN GAME_MASTERS GM on G.ID = GM.GAME_ID ` +
+    const query = `SELECT G.ID,G.NAME, G.STATE, G.MEETING_INDEX, G.RACE_INDEX, G.OWNER_ID as MASTER_PLAYER_ID FROM GAMES G ` +
         `WHERE G.ID =${id};`;
     let rows =  await executeQuery(connection,query);
     if (rows) {
@@ -120,11 +119,6 @@ deleteGame = async(connection, name) => {
 }
 
 
-addGameMaster = async (connection, gameId, playerId) => {
-    const query=`INSERT INTO GAME_MASTERS (GAME_ID,PLAYER_ID) VALUES (${gameId}, ${playerId})`;
-    return await executeQuery(connection,query);
-}
-
 deleteMeetingData = async(connection, gameId) => {
     const query=`DELETE from GAME_MEETINGS WHERE GAME_ID = ${gameId};`;
     return await executeQuery(connection,query);
@@ -136,8 +130,8 @@ createMeetingData = async(connection, gameId) => {
     return await executeQuery(connection,query);
 }
 
-addGame = async (connection, name) => {
-    let query = `INSERT INTO GAMES (NAME,STATE, MEETING_INDEX, RACE_INDEX) VALUES ("${name.toUpperCase()}",0,0,0);`;
+addGame = async (connection, name, playerId) => {
+    let query = `INSERT INTO GAMES (NAME,STATE, MEETING_INDEX, RACE_INDEX, OWNER_ID) VALUES ("${name.toUpperCase()}",0,0,0, ${playerId});`;
     let result = await executeQuery(connection,query);
     if (result) {
 
@@ -341,10 +335,11 @@ getRacesInMeeting = async(connection, meetingId) => {
 }
 
 getRaceInfo = async(connection, raceId, gameId) => {
-    const query = `select GM.MEETING_ID as ID, R.NAME as NAME, R.LENGTH_FURLONGS, R.PRIZE, GM.GOING, GM.MEETING_STATE from GAME_MEETINGS GM ` +
-        `inner join MEETING_RACES MR on GM.MEETING_ID = MR.MEETING_ID ` +
-        `inner join RACES R on GM.GAME_ID = R.ID ` +
-        `WHERE MR.RACE_ID = ${raceId} AND GM.GAME_ID = ${gameId};`;
+    const query = `select GM.MEETING_ID as ID, R.NAME as NAME, R.LENGTH_FURLONGS, R.PRIZE, GM.GOING, GM.MEETING_STATE ` +
+        `from GAME_MEETINGS GM ` +
+        `inner join MEETING_RACES MR on MR.MEETING_ID = GM.MEETING_ID ` +
+        `inner join RACES R on MR.RACE_ID = R.ID ` +
+        `WHERE MR.RACE_ID = ${raceId} and GM.GAME_ID = ${gameId};`;
     return await executeQuery(connection,query);
 }
 
@@ -580,7 +575,7 @@ app.post('/games', async (req,res) => {
             res.statusCode = 422;
             return;
         }
-        await addGame(connection,req.body.name).then((response) => {
+        await addGame(connection,req.body.name, req.body.ownerId).then((response) => {
             res.send(response);
         }).catch((err) => {
             return false;

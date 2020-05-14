@@ -356,7 +356,7 @@ INSERT INTO teamGames.USER_STATE_TYPES (ID, NAME) VALUES (5, 'RACE_END');
 INSERT INTO teamGames.USER_STATE_TYPES (ID, NAME) VALUES (6, 'MEETING_END');
 
 
-create definer = simon@localhost procedure addGame(IN n varchar(255), IN ownerId int)
+create procedure addGame(IN n varchar(255), IN ownerId int)
 BEGIN
 	INSERT INTO GAMES (NAME,STATE, MEETING_INDEX, RACE_INDEX, OWNER_ID) VALUES (n,0,0,0, ownerId);
 
@@ -367,7 +367,7 @@ BEGIN
 	SELECT ID, NAME, STATE, MEETING_INDEX, RACE_INDEX, OWNER_ID AS MASTER_PLAYER_ID  FROM GAMES WHERE ID = (SELECT LAST_INSERT_ID());
 END;
 
-create definer = simon@localhost procedure addHorseForPlayer(IN hname varchar(255), IN htype int, IN speedFactor float, IN slowFactor float, IN eFall int, IN goingType int, IN gid int, IN pid int)
+create procedure addHorseForPlayer(IN hname varchar(255), IN htype int, IN speedFactor float, IN slowFactor float, IN eFall int, IN goingType int, IN gid int, IN pid int)
 BEGIN
 
 	INSERT INTO HORSES (NAME, HORSE_TYPE, SPEED_FACTOR, SLOWER_SPEED_FACTOR, ENERGY_FALL_DISTANCE, GOING_TYPE)
@@ -377,7 +377,7 @@ BEGIN
 	VALUES ( (SELECT LAST_INSERT_ID()), gid, pid );
 END;
 
-create definer = simon@localhost procedure addHorseToRace(IN gameId int, IN raceId int, IN horseId int, IN playerId int)
+create procedure addHorseToRace(IN gameId int, IN raceId int, IN horseId int, IN playerId int)
 BEGIN
 	DELETE FROM HORSES_IN_RACE WHERE GAME_ID = gameId AND RACE_ID = raceId and PLAYER_ID = playerId;
 
@@ -385,56 +385,56 @@ BEGIN
             VALUES ( gameId, raceId, horseId, playerId );
 END;
 
-create definer = simon@localhost procedure addPlayerToGame(IN pid int, IN gid int)
+create procedure addPlayerToGame(IN pid int, IN gid int)
 BEGIN
     INSERT INTO GAME_PLAYERS (GAME_ID, PLAYER_ID, FUNDS ) VALUES ( gid, pid,0);
 END;
 
-create definer = simon@localhost procedure addUser(IN n varchar(255), IN p varchar(255))
+create procedure addUser(IN n varchar(255), IN p varchar(255))
 BEGIN
 	INSERT INTO USERS (NAME,PASSWORD) VALUES (UPPER(n), PASSWORD(p));
 
 	SELECT ID, NAME FROM USERS WHERE ID = (SELECT LAST_INSERT_ID());
 END;
 
-create definer = simon@localhost procedure adjustPlayerFunds(IN gameId int, IN playerId int, IN adjustment int)
+create procedure adjustPlayerFunds(IN gameId int, IN playerId int, IN adjustment int)
 BEGIN
 	UPDATE GAME_PLAYERS SET FUNDS = FUNDS + adjustment WHERE GAME_ID= gameId AND PLAYER_ID= playerId;
 END;
 
-create definer = simon@localhost procedure authenticate(IN n varchar(255), IN p varchar(255))
+create procedure authenticate(IN n varchar(255), IN p varchar(255))
 BEGIN
 	SELECT ID,NAME FROM USERS WHERE NAME=UPPER(n) AND PASSWORD=PASSWORD(p);
 END;
 
-create definer = simon@localhost procedure clearBetsForRace(IN gameId int, IN raceId int)
+create procedure clearBetsForRace(IN gameId int, IN raceId int)
 BEGIN
 	DELETE FROM BETS WHERE GAME_ID=gameId AND RACE_ID=raceId;
 END;
 
-create definer = simon@localhost procedure clearPlayerHorseSelectionForMeeting(IN playerId int, IN gameId int, IN meetingId int)
+create procedure clearPlayerHorseSelectionForMeeting(IN playerId int, IN gameId int, IN meetingId int)
 BEGIN
     DELETE FROM HORSES_IN_RACE WHERE RACE_ID in (SELECT MR.RACE_ID from MEETING_RACES MR WHERE MR.MEETING_ID = meetingId)
     and GAME_ID=gameId and PLAYER_ID=playerId;
 END;
 
-create definer = simon@localhost procedure deleteGame(IN gameName varchar(255))
+create procedure deleteGame(IN gameName varchar(255))
 BEGIN
   DELETE FROM GAMES WHERE NAME = gameName;
 
 END;
 
-create definer = simon@localhost procedure deleteHorsesForPlayer(IN gid int, IN pid int)
+create procedure deleteHorsesForPlayer(IN gid int, IN pid int)
 BEGIN
 DELETE FROM HORSES WHERE HORSES.ID IN (SELECT HORSE_ID FROM HORSE_OWNERSHIP where GAME_ID = gid and PLAYER_ID = pid);
 END;
 
-create definer = simon@localhost procedure deletePlayerFromGame(IN gid int, IN pid int)
+create procedure deletePlayerFromGame(IN gid int, IN pid int)
 BEGIN
     DELETE FROM GAME_PLAYERS WHERE GAME_ID = gid AND PLAYER_ID = pid;
 END;
 
-create definer = simon@localhost procedure getBetsForRace(IN raceId int, IN gameId int)
+create procedure getBetsForRace(IN raceId int, IN gameId int)
 BEGIN
 	SELECT B.PLAYER_ID, U.NAME as PLAYER_NAME, B.HORSE_ID, H.NAME as HORSE_NAME, B.AMOUNT, B.TYPE, B.ODDS
 	FROM BETS B Inner Join USERS U on B.PLAYER_ID = U.ID
@@ -442,18 +442,18 @@ BEGIN
 	WHERE B.RACE_ID=raceId AND B.GAME_ID = gameId;
 END;
 
-create definer = simon@localhost procedure getGame(IN gameId int)
+create procedure getGame(IN gameId int)
 BEGIN
 SELECT G.ID,G.NAME, G.STATE, G.MEETING_INDEX, G.RACE_INDEX, G.OWNER_ID as MASTER_PLAYER_ID FROM GAMES G
         WHERE G.ID = gameId;
 END;
 
-create definer = simon@localhost procedure getGames()
+create procedure getGames()
 BEGIN
 	SELECT ID, NAME, STATE, MEETING_INDEX, RACE_INDEX, OWNER_ID FROM GAMES;
 END;
 
-create definer = simon@localhost procedure getHorseForm(IN gid int, IN hid int)
+create procedure getHorseForm(IN gid int, IN hid int)
 BEGIN
 	SELECT HORSE_ID, H.NAME as HORSE_NAME, RACE_ID, R.NAME as RACE_NAME, R.LENGTH_FURLONGS as LENGTH_FURLONGS, GAME_ID, POSITION, GOING, RACE_INDEX FROM HORSE_FORM
 		INNER JOIN RACES R on HORSE_FORM.RACE_ID = R.ID
@@ -461,14 +461,14 @@ BEGIN
         WHERE GAME_ID=gid and HORSE_ID = hid;
 END;
 
-create definer = simon@localhost procedure getHorsesForPlayer(IN gid int, IN pid int)
+create procedure getHorsesForPlayer(IN gid int, IN pid int)
 BEGIN
 SELECT H.ID, H.NAME, H.HORSE_TYPE, H.SPEED_FACTOR, H.SLOWER_SPEED_FACTOR, H.ENERGY_FALL_DISTANCE, H.GOING_TYPE FROM HORSES H
 INNER JOIN HORSE_OWNERSHIP HO on H.ID = HO.HORSE_ID
 WHERE HO.PLAYER_ID = pid AND HO.GAME_ID = gid;
 END;
 
-create definer = simon@localhost procedure getHorsesForRace(IN raceId int, IN gameId int)
+create procedure getHorsesForRace(IN raceId int, IN gameId int)
 BEGIN
 SELECT HR.HORSE_ID as ID, H.NAME, H.HORSE_TYPE, H.SPEED_FACTOR, H.SLOWER_SPEED_FACTOR, H.ENERGY_FALL_DISTANCE, H.GOING_TYPE, HR.PLAYER_ID, U.NAME as PLAYER_NAME FROM HORSES_IN_RACE HR
 INNER JOIN HORSES H on HR.HORSE_ID = H.ID
@@ -477,14 +477,14 @@ WHERE HR.RACE_ID = raceId AND HR.GAME_ID = gameId;
 
 END;
 
-create definer = simon@localhost procedure getMeetings(IN gameId int)
+create procedure getMeetings(IN gameId int)
 BEGIN
 SELECT GM.MEETING_ID as ID, M.NAME AS NAME, GM.GOING, GM.MEETING_STATE from GAME_MEETINGS GM
     INNER JOIN MEETINGS M ON GM.MEETING_ID = M.ID
     WHERE GM.GAME_ID = gameId;
 END;
 
-create definer = simon@localhost procedure getPlayerBetsForRace(IN raceId int, IN gameId int, IN playerId int)
+create procedure getPlayerBetsForRace(IN raceId int, IN gameId int, IN playerId int)
 BEGIN
 	SELECT B.PLAYER_ID, U.NAME as PLAYER_NAME, B.HORSE_ID, H.NAME as HORSE_NAME, B.AMOUNT, B.TYPE, B.ODDS
 	FROM BETS B Inner Join USERS U on B.PLAYER_ID = U.ID
@@ -492,12 +492,12 @@ BEGIN
 	WHERE B.RACE_ID=raceId AND B.GAME_ID = gameId AND B.PLAYER_ID = playerId;
 END;
 
-create definer = simon@localhost procedure getPlayerFunds(IN gameId int, IN playerId int)
+create procedure getPlayerFunds(IN gameId int, IN playerId int)
 BEGIN
 	SELECT FUNDS FROM GAME_PLAYERS WHERE GAME_ID=gameId AND PLAYER_ID=playerId;
 END;
 
-create definer = simon@localhost procedure getPlayerHorsesForMeeting(IN mid int, IN pid int, IN gid int)
+create procedure getPlayerHorsesForMeeting(IN mid int, IN pid int, IN gid int)
 BEGIN
     SELECT RACE_ID, HORSE_ID as ID, H.NAME, H.GOING_TYPE FROM HORSES_IN_RACE
         INNER JOIN HORSES H on HORSES_IN_RACE.HORSE_ID = H.ID
@@ -505,12 +505,12 @@ BEGIN
         AND HORSES_IN_RACE.PLAYER_ID = pid AND HORSES_IN_RACE.GAME_ID = gid;
 END;
 
-create definer = simon@localhost procedure getPlayerState(IN gid int, IN pid int)
+create procedure getPlayerState(IN gid int, IN pid int)
 BEGIN
 	SELECT STATE FROM PLAYER_STATES  WHERE PLAYER=pid AND GAME_ID=gid;
 END;
 
-create definer = simon@localhost procedure getPlayersInGame(IN gid int)
+create procedure getPlayersInGame(IN gid int)
 BEGIN
 SELECT GAME_PLAYERS.PLAYER_ID, GAME_PLAYERS.FUNDS, U.NAME as NAME FROM GAME_PLAYERS
     INNER JOIN USERS U on GAME_PLAYERS.PLAYER_ID = U.ID
@@ -518,7 +518,7 @@ SELECT GAME_PLAYERS.PLAYER_ID, GAME_PLAYERS.FUNDS, U.NAME as NAME FROM GAME_PLAY
     WHERE G.ID = gid;
 END;
 
-create definer = simon@localhost procedure getPlayersWithoutSelections(IN meetingId int, IN gameId int)
+create procedure getPlayersWithoutSelections(IN meetingId int, IN gameId int)
 BEGIN
 SELECT PLAYER_ID, U2.NAME as PLAYER_NAME FROM GAME_PLAYERS G
         INNER JOIN USERS U2 on G.PLAYER_ID = U2.ID
@@ -529,7 +529,7 @@ SELECT PLAYER_ID, U2.NAME as PLAYER_NAME FROM GAME_PLAYERS G
         AND RACE_ID IN (SELECT RACE_ID FROM MEETING_RACES WHERE MEETING_ID = meetingId));
 END;
 
-create definer = simon@localhost procedure getRaceInfo(IN raceId int, IN gameId int)
+create procedure getRaceInfo(IN raceId int, IN gameId int)
 BEGIN
 select GM.MEETING_ID as ID, R.NAME as NAME, R.LENGTH_FURLONGS, R.PRIZE, GM.GOING, GM.MEETING_STATE
         from GAME_MEETINGS GM
@@ -538,19 +538,19 @@ select GM.MEETING_ID as ID, R.NAME as NAME, R.LENGTH_FURLONGS, R.PRIZE, GM.GOING
         WHERE MR.RACE_ID = raceId and GM.GAME_ID = gameId;
 END;
 
-create definer = simon@localhost procedure getRacesInMeeting(IN meetingId int)
+create procedure getRacesInMeeting(IN meetingId int)
 BEGIN
 SELECT R.ID,R.NAME,R.LENGTH_FURLONGS,R.PRIZE FROM RACES R
 	WHERE R.ID IN (SELECT RACE_ID FROM MEETING_RACES WHERE MEETING_ID = meetingId);
 
 END;
 
-create definer = simon@localhost procedure getUsers()
+create procedure getUsers()
 BEGIN
   SELECT ID, NAME FROM USERS;
 END;
 
-create definer = simon@localhost procedure saveHorseForm(IN gameId int, IN raceId int, IN horseId int, IN position int, IN going int)
+create procedure saveHorseForm(IN gameId int, IN raceId int, IN horseId int, IN position int, IN going int)
 BEGIN
 	DELETE FROM HORSE_FORM WHERE GAME_ID= gameId AND RACE_ID= raceId AND HORSE_ID=horseId;
 
@@ -559,7 +559,7 @@ BEGIN
 
 END;
 
-create definer = simon@localhost procedure setPlayerState(IN pid int, IN gid int, IN s int)
+create procedure setPlayerState(IN pid int, IN gid int, IN s int)
 BEGIN
 	DELETE FROM PLAYER_STATES WHERE PLAYER_ID=pid AND GAME_ID=gid;
 
@@ -567,7 +567,7 @@ BEGIN
 		VALUES(pid,gid,s);
 END;
 
-create definer = simon@localhost procedure storeBet(IN playerId int, IN horseId int, IN raceId int, IN gameId int, IN betType int, IN amount int, IN odss float)
+create procedure storeBet(IN playerId int, IN horseId int, IN raceId int, IN gameId int, IN betType int, IN amount int, IN odss float)
 BEGIN
     DELETE FROM BETS WHERE
         PLAYER_ID = playerId AND HORSE_ID = horseId
@@ -579,7 +579,7 @@ BEGIN
 	end if;
 END;
 
-create definer = simon@localhost procedure updateGameIndexes(IN race_n int, IN meeting_n int, IN gid int)
+create procedure updateGameIndexes(IN race_n int, IN meeting_n int, IN gid int)
 BEGIN
     UPDATE GAMES SET RACE_INDEX = race_n, MEETING_INDEX = meeting_n WHERE ID = gid;
 END;

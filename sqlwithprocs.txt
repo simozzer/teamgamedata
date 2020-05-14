@@ -1,0 +1,517 @@
+create schema if not exists teamGames collate latin1_swedish_ci;
+
+create table if not exists GAMES
+(
+	ID int auto_increment
+		primary key,
+	NAME varchar(255) not null,
+	STATE int not null,
+	MEETING_INDEX int default -1 not null,
+	RACE_INDEX int default -1 not null,
+	OWNER_ID int not null,
+	constraint NAME
+		unique (NAME)
+);
+
+create table if not exists GOING_TYPES
+(
+	ID int not null
+		primary key,
+	NAME varchar(50) not null,
+	constraint GOING_TYPES_NAME_uindex
+		unique (NAME)
+);
+
+create table if not exists HORSES
+(
+	ID int auto_increment
+		primary key,
+	NAME varchar(255) not null,
+	HORSE_TYPE int not null,
+	SPEED_FACTOR float not null,
+	SLOWER_SPEED_FACTOR float not null,
+	ENERGY_FALL_DISTANCE float not null,
+	GOING_TYPE int default 0 not null,
+	constraint HORSES_ibfk_1
+		foreign key (GOING_TYPE) references GOING_TYPES (ID)
+			on delete cascade
+);
+
+create index FK_HORSE_GOING
+	on HORSES (GOING_TYPE);
+
+create table if not exists MEETINGS
+(
+	ID int auto_increment
+		primary key,
+	NAME varchar(255) not null,
+	IMAGE_URL varchar(1024) default '' null
+);
+
+create table if not exists GAME_MEETINGS
+(
+	GAME_ID int not null,
+	MEETING_ID int not null,
+	GOING int not null,
+	MEETING_STATE int default 0 not null,
+	primary key (GAME_ID, MEETING_ID),
+	constraint GAME_MEETINGS___fk_GOING
+		foreign key (GOING) references GOING_TYPES (ID),
+	constraint GAME_MEETINGS_ibfk_1
+		foreign key (GAME_ID) references GAMES (ID)
+			on delete cascade,
+	constraint GAME_MEETINGS_ibfk_2
+		foreign key (MEETING_ID) references MEETINGS (ID)
+			on delete cascade
+);
+
+create index MEETING_ID
+	on GAME_MEETINGS (MEETING_ID);
+
+create table if not exists RACES
+(
+	ID int auto_increment
+		primary key,
+	NAME varchar(255) not null,
+	LENGTH_FURLONGS int not null,
+	PRIZE int default 1 not null
+);
+
+create table if not exists HORSE_FORM
+(
+	HORSE_ID int not null,
+	RACE_ID int not null,
+	GAME_ID int not null,
+	POSITION int not null,
+	RACE_INDEX int not null,
+	GOING int not null,
+	primary key (HORSE_ID, RACE_ID, GAME_ID),
+	constraint HORSE_FORM___fk_GOING
+		foreign key (GOING) references GOING_TYPES (ID),
+	constraint HORSE_FORM_ibfk_1
+		foreign key (HORSE_ID) references HORSES (ID)
+			on delete cascade,
+	constraint HORSE_FORM_ibfk_2
+		foreign key (RACE_ID) references RACES (ID)
+			on delete cascade,
+	constraint HORSE_FORM_ibfk_3
+		foreign key (GAME_ID) references GAMES (ID)
+			on delete cascade
+);
+
+create index GAME_ID
+	on HORSE_FORM (GAME_ID);
+
+create index RACE_ID
+	on HORSE_FORM (RACE_ID);
+
+create table if not exists MEETING_RACES
+(
+	MEETING_ID int not null,
+	RACE_ID int not null,
+	constraint MEETING_RACES_ibfk_1
+		foreign key (MEETING_ID) references MEETINGS (ID)
+			on delete cascade,
+	constraint MEETING_RACES_ibfk_2
+		foreign key (RACE_ID) references RACES (ID)
+			on delete cascade
+);
+
+create index MEETING_ID
+	on MEETING_RACES (MEETING_ID);
+
+create index RACE_ID
+	on MEETING_RACES (RACE_ID);
+
+create table if not exists ROLES
+(
+	ID int auto_increment
+		primary key,
+	NAME varchar(255) not null,
+	constraint NAME
+		unique (NAME)
+);
+
+create table if not exists USERS
+(
+	ID int auto_increment
+		primary key,
+	NAME varchar(255) not null,
+	PASSWORD varchar(255) not null,
+	constraint NAME
+		unique (NAME)
+);
+
+create table if not exists GAME_PLAYERS
+(
+	GAME_ID int not null,
+	PLAYER_ID int not null,
+	FUNDS int not null,
+	primary key (GAME_ID, PLAYER_ID),
+	constraint GAME_PLAYERS_ibfk_1
+		foreign key (GAME_ID) references GAMES (ID)
+			on delete cascade,
+	constraint GAME_PLAYERS_ibfk_2
+		foreign key (PLAYER_ID) references USERS (ID)
+			on delete cascade
+);
+
+create table if not exists BETS
+(
+	PLAYER_ID int not null,
+	HORSE_ID int not null,
+	RACE_ID int not null,
+	GAME_ID int not null,
+	AMOUNT int not null,
+	TYPE int not null,
+	ODDS float not null,
+	primary key (PLAYER_ID, HORSE_ID, RACE_ID, GAME_ID, TYPE),
+	constraint BETS_ibfk_1
+		foreign key (PLAYER_ID) references USERS (ID)
+			on delete cascade,
+	constraint BETS_ibfk_2
+		foreign key (HORSE_ID) references HORSES (ID)
+			on delete cascade,
+	constraint BETS_ibfk_3
+		foreign key (RACE_ID) references RACES (ID)
+			on delete cascade,
+	constraint BETS_ibfk_4
+		foreign key (GAME_ID) references GAMES (ID)
+			on delete cascade,
+	constraint BETS_ibfk_5
+		foreign key (GAME_ID, PLAYER_ID) references GAME_PLAYERS (GAME_ID, PLAYER_ID)
+			on delete cascade
+);
+
+create index HORSE_ID
+	on BETS (HORSE_ID);
+
+create index PLAYER_ID
+	on BETS (PLAYER_ID, GAME_ID);
+
+create index RACE_ID
+	on BETS (RACE_ID);
+
+create index PLAYER_ID
+	on GAME_PLAYERS (PLAYER_ID);
+
+create table if not exists HORSES_IN_RACE
+(
+	GAME_ID int not null,
+	RACE_ID int not null,
+	HORSE_ID int not null,
+	PLAYER_ID int not null,
+	primary key (GAME_ID, RACE_ID, HORSE_ID, PLAYER_ID),
+	constraint ONE_HORSE_PER_PLAYER_PER_RACE
+		unique (GAME_ID, PLAYER_ID, RACE_ID),
+	constraint HORSES_IN_RACE_ibfk_1
+		foreign key (GAME_ID) references GAMES (ID)
+			on delete cascade,
+	constraint HORSES_IN_RACE_ibfk_2
+		foreign key (RACE_ID) references RACES (ID)
+			on delete cascade,
+	constraint HORSES_IN_RACE_ibfk_3
+		foreign key (HORSE_ID) references HORSES (ID)
+			on delete cascade,
+	constraint HORSES_IN_RACE_ibfk_4
+		foreign key (GAME_ID, PLAYER_ID) references GAME_PLAYERS (GAME_ID, PLAYER_ID)
+			on delete cascade
+);
+
+create index HORSE_ID
+	on HORSES_IN_RACE (HORSE_ID);
+
+create index RACE_ID
+	on HORSES_IN_RACE (RACE_ID);
+
+create table if not exists HORSE_OWNERSHIP
+(
+	HORSE_ID int not null
+		primary key,
+	GAME_ID int not null,
+	PLAYER_ID int not null,
+	constraint HORSE_OWNERSHIP_ibfk_1
+		foreign key (HORSE_ID) references HORSES (ID)
+			on delete cascade,
+	constraint HORSE_OWNERSHIP_ibfk_2
+		foreign key (GAME_ID) references GAMES (ID)
+			on delete cascade,
+	constraint HORSE_OWNERSHIP_ibfk_3
+		foreign key (PLAYER_ID) references USERS (ID)
+			on delete cascade
+);
+
+create index GAME_ID
+	on HORSE_OWNERSHIP (GAME_ID);
+
+create index PLAYER_ID
+	on HORSE_OWNERSHIP (PLAYER_ID);
+
+create table if not exists PLAYER_STATES
+(
+	PLAYER_ID int not null,
+	GAME_ID int not null,
+	STATE int default -1 not null,
+	primary key (PLAYER_ID, GAME_ID),
+	constraint PLAYER_STATES_ibfk_1
+		foreign key (PLAYER_ID) references USERS (ID)
+			on delete cascade,
+	constraint PLAYER_STATES_ibfk_2
+		foreign key (GAME_ID) references GAMES (ID)
+			on delete cascade
+);
+
+create index GAME_ID
+	on PLAYER_STATES (GAME_ID);
+
+create table if not exists USER_ROLES
+(
+	USER_ID int not null,
+	ROLE_ID int not null,
+	primary key (USER_ID, ROLE_ID),
+	constraint USER_ROLES_ibfk_1
+		foreign key (USER_ID) references USERS (ID)
+			on delete cascade,
+	constraint USER_ROLES_ibfk_2
+		foreign key (ROLE_ID) references ROLES (ID)
+			on delete cascade
+);
+
+create index ROLE_ID
+	on USER_ROLES (ROLE_ID);
+
+create table if not exists USER_STATE_TYPES
+(
+	ID int not null
+		primary key,
+	NAME varchar(50) not null
+);
+
+create definer = team@localhost procedure addGame(IN n varchar(255), IN ownerId int)
+BEGIN
+	INSERT INTO GAMES (NAME,STATE, MEETING_INDEX, RACE_INDEX, OWNER_ID) VALUES (n,0,0,0, ownerId);
+
+	DELETE from GAME_MEETINGS WHERE GAME_ID = LAST_INSERT_ID();
+
+	INSERT INTO GAME_MEETINGS SELECT LAST_INSERT_ID() as GAME_ID, M.ID ,FLOOR(RAND()*3) as GOING, 0 as STATE FROM MEETINGS M;
+
+	SELECT ID, NAME, STATE, MEETING_INDEX, RACE_INDEX, OWNER_ID AS MASTER_PLAYER_ID  FROM GAMES WHERE ID = (SELECT LAST_INSERT_ID());
+END;
+
+create definer = team@localhost procedure addHorseForPlayer(IN hname varchar(255), IN htype int, IN speedFactor float, IN slowFactor float, IN eFall int, IN goingType int, IN gid int, IN pid int)
+BEGIN
+
+	INSERT INTO HORSES (NAME, HORSE_TYPE, SPEED_FACTOR, SLOWER_SPEED_FACTOR, ENERGY_FALL_DISTANCE, GOING_TYPE)
+	VALUES ( hname, htype , speedFactor, slowFactor, eFall, goingType);
+
+	INSERT INTO HORSE_OWNERSHIP (HORSE_ID, GAME_ID, PLAYER_ID)
+	VALUES ( (SELECT LAST_INSERT_ID()), gid, pid );
+END;
+
+create definer = team@localhost procedure addHorseToRace(IN gameId int, IN raceId int, IN horseId int, IN playerId int)
+BEGIN
+	DELETE FROM HORSES_IN_RACE WHERE GAME_ID = gameId AND RACE_ID = raceId and PLAYER_ID = playerId;
+
+	INSERT INTO HORSES_IN_RACE ( GAME_ID, RACE_ID, HORSE_ID, PLAYER_ID)
+            VALUES ( gameId, raceId, horseId, playerId );
+END;
+
+create definer = team@localhost procedure addPlayerToGame(IN pid int, IN gid int)
+BEGIN
+    INSERT INTO GAME_PLAYERS (GAME_ID, PLAYER_ID, FUNDS ) VALUES ( gid, pid,0);
+END;
+
+create definer = team@localhost procedure addUser(IN n varchar(255), IN p varchar(255))
+BEGIN
+	INSERT INTO USERS (NAME,PASSWORD) VALUES (UPPER(n), PASSWORD(p));
+
+	SELECT ID, NAME FROM USERS WHERE ID = (SELECT LAST_INSERT_ID());
+END;
+
+create definer = team@localhost procedure adjustPlayerFunds(IN gameId int, IN playerId int, IN adjustment int)
+BEGIN
+	UPDATE GAME_PLAYERS SET FUNDS = FUNDS + adjustment WHERE GAME_ID= gameId AND PLAYER_ID= playerId;
+END;
+
+create definer = team@localhost procedure authenticate(IN n varchar(255), IN p varchar(255))
+BEGIN
+	SELECT ID,NAME FROM USERS WHERE NAME=UPPER(n) AND PASSWORD=PASSWORD(p);
+END;
+
+create definer = team@localhost procedure clearBetsForRace(IN gameId int, IN raceId int)
+BEGIN
+	DELETE FROM BETS WHERE GAME_ID=gameId AND RACE_ID=raceId;
+END;
+
+create definer = team@localhost procedure clearPlayerHorseSelectionForMeeting(IN playerId int, IN gameId int, IN meetingId int)
+BEGIN
+    DELETE FROM HORSES_IN_RACE WHERE RACE_ID in (SELECT MR.RACE_ID from MEETING_RACES MR WHERE MR.MEETING_ID = meetingId)
+    and GAME_ID=gameId and PLAYER_ID=playerId;
+END;
+
+create definer = team@localhost procedure deleteGame(IN gameName varchar(255))
+BEGIN
+  DELETE FROM GAMES WHERE NAME = gameName;
+
+END;
+
+create definer = team@localhost procedure deleteHorsesForPlayer(IN gid int, IN pid int)
+BEGIN
+DELETE FROM HORSES WHERE HORSES.ID IN (SELECT HORSE_ID FROM HORSE_OWNERSHIP where GAME_ID = gid and PLAYER_ID = pid);
+END;
+
+create definer = team@localhost procedure deletePlayerFromGame(IN gid int, IN pid int)
+BEGIN
+    DELETE FROM GAME_PLAYERS WHERE GAME_ID = gid AND PLAYER_ID = pid;
+END;
+
+create definer = team@localhost procedure getBetsForRace(IN raceId int, IN gameId int)
+BEGIN
+	SELECT B.PLAYER_ID, U.NAME as PLAYER_NAME, B.HORSE_ID, H.NAME as HORSE_NAME, B.AMOUNT, B.TYPE, B.ODDS
+	FROM BETS B Inner Join USERS U on B.PLAYER_ID = U.ID
+	Inner Join HORSES H on B.HORSE_ID = H.ID
+	WHERE B.RACE_ID=raceId AND B.GAME_ID = gameId;
+END;
+
+create definer = team@localhost procedure getGame(IN gameId int)
+BEGIN
+SELECT G.ID,G.NAME, G.STATE, G.MEETING_INDEX, G.RACE_INDEX, G.OWNER_ID as MASTER_PLAYER_ID FROM GAMES G
+        WHERE G.ID = gameId;
+END;
+
+create definer = team@localhost procedure getGames()
+BEGIN
+	SELECT ID, NAME, STATE, MEETING_INDEX, RACE_INDEX, OWNER_ID FROM GAMES;
+END;
+
+create definer = team@localhost procedure getHorseForm(IN gid int, IN hid int)
+BEGIN
+	SELECT HORSE_ID, H.NAME as HORSE_NAME, RACE_ID, R.NAME as RACE_NAME, R.LENGTH_FURLONGS as LENGTH_FURLONGS, GAME_ID, POSITION, GOING, RACE_INDEX FROM HORSE_FORM
+		INNER JOIN RACES R on HORSE_FORM.RACE_ID = R.ID
+        INNER JOIN HORSES H on HORSE_FORM.HORSE_ID = H.ID
+        WHERE GAME_ID=gid and HORSE_ID = hid;
+END;
+
+create definer = team@localhost procedure getHorsesForPlayer(IN gid int, IN pid int)
+BEGIN
+SELECT H.ID, H.NAME, H.HORSE_TYPE, H.SPEED_FACTOR, H.SLOWER_SPEED_FACTOR, H.ENERGY_FALL_DISTANCE, H.GOING_TYPE FROM HORSES H
+INNER JOIN HORSE_OWNERSHIP HO on H.ID = HO.HORSE_ID
+WHERE HO.PLAYER_ID = pid AND HO.GAME_ID = gid;
+END;
+
+create definer = team@localhost procedure getHorsesForRace(IN raceId int, IN gameId int)
+BEGIN
+SELECT HR.HORSE_ID as ID, H.NAME, H.HORSE_TYPE, H.SPEED_FACTOR, H.SLOWER_SPEED_FACTOR, H.ENERGY_FALL_DISTANCE, H.GOING_TYPE, HR.PLAYER_ID, U.NAME as PLAYER_NAME FROM HORSES_IN_RACE HR
+INNER JOIN HORSES H on HR.HORSE_ID = H.ID
+INNER JOIN USERS U ON HR.PLAYER_ID = U.ID
+WHERE HR.RACE_ID = raceId AND HR.GAME_ID = gameId;
+
+END;
+
+create definer = team@localhost procedure getMeetings(IN gameId int)
+BEGIN
+SELECT GM.MEETING_ID as ID, M.NAME AS NAME, GM.GOING, GM.MEETING_STATE from GAME_MEETINGS GM
+    INNER JOIN MEETINGS M ON GM.MEETING_ID = M.ID
+    WHERE GM.GAME_ID = gameId;
+END;
+
+create definer = team@localhost procedure getPlayerBetsForRace(IN raceId int, IN gameId int, IN playerId int)
+BEGIN
+	SELECT B.PLAYER_ID, U.NAME as PLAYER_NAME, B.HORSE_ID, H.NAME as HORSE_NAME, B.AMOUNT, B.TYPE, B.ODDS
+	FROM BETS B Inner Join USERS U on B.PLAYER_ID = U.ID
+	Inner Join HORSES H on B.HORSE_ID = H.ID
+	WHERE B.RACE_ID=raceId AND B.GAME_ID = gameId AND B.PLAYER_ID = playerId;
+END;
+
+create definer = team@localhost procedure getPlayerFunds(IN gameId int, IN playerId int)
+BEGIN
+	SELECT FUNDS FROM GAME_PLAYERS WHERE GAME_ID=gameId AND PLAYER_ID=playerId;
+END;
+
+create definer = team@localhost procedure getPlayerHorsesForMeeting(IN mid int, IN pid int, IN gid int)
+BEGIN
+    SELECT RACE_ID, HORSE_ID as ID, H.NAME, H.GOING_TYPE FROM HORSES_IN_RACE
+        INNER JOIN HORSES H on HORSES_IN_RACE.HORSE_ID = H.ID
+        WHERE HORSES_IN_RACE.RACE_ID IN (SELECT RACE_ID from MEETINGS WHERE ID = mid)
+        AND HORSES_IN_RACE.PLAYER_ID = pid AND HORSES_IN_RACE.GAME_ID = gid;
+END;
+
+create definer = team@localhost procedure getPlayerState(IN gid int, IN pid int)
+BEGIN
+	SELECT STATE FROM PLAYER_STATES  WHERE PLAYER=pid AND GAME_ID=gid;
+END;
+
+create definer = team@localhost procedure getPlayersInGame(IN gid int)
+BEGIN
+SELECT GAME_PLAYERS.PLAYER_ID, GAME_PLAYERS.FUNDS, U.NAME as NAME FROM GAME_PLAYERS
+    INNER JOIN USERS U on GAME_PLAYERS.PLAYER_ID = U.ID
+    INNER JOIN GAMES G on GAME_PLAYERS.GAME_ID = G.ID
+    WHERE G.ID = gid;
+END;
+
+create definer = team@localhost procedure getPlayersWithoutSelections(IN meetingId int, IN gameId int)
+BEGIN
+SELECT PLAYER_ID, U2.NAME as PLAYER_NAME FROM GAME_PLAYERS G
+        INNER JOIN USERS U2 on G.PLAYER_ID = U2.ID
+        WHERE G.GAME_ID  = gameId
+        AND G.PLAYER_ID not in (SELECT DISTINCT(PLAYER_ID) from HORSES_IN_RACE HIR
+        INNER JOIN USERS U on HIR.PLAYER_ID = U.ID
+        WHERE GAME_ID = gameId
+        AND RACE_ID IN (SELECT RACE_ID FROM MEETING_RACES WHERE MEETING_ID = meetingId));
+END;
+
+create definer = team@localhost procedure getRaceInfo(IN raceId int, IN gameId int)
+BEGIN
+select GM.MEETING_ID as ID, R.NAME as NAME, R.LENGTH_FURLONGS, R.PRIZE, GM.GOING, GM.MEETING_STATE
+        from GAME_MEETINGS GM
+        inner join MEETING_RACES MR on MR.MEETING_ID = GM.MEETING_ID
+        inner join RACES R on MR.RACE_ID = R.ID
+        WHERE MR.RACE_ID = raceId and GM.GAME_ID = gameId;
+END;
+
+create definer = team@localhost procedure getRacesInMeeting(IN meetingId int)
+BEGIN
+SELECT R.ID,R.NAME,R.LENGTH_FURLONGS,R.PRIZE FROM RACES R
+	WHERE R.ID IN (SELECT RACE_ID FROM MEETING_RACES WHERE MEETING_ID = meetingId);
+
+END;
+
+create definer = team@localhost procedure getUsers()
+BEGIN
+  SELECT ID, NAME FROM USERS;
+END;
+
+create definer = team@localhost procedure saveHorseForm(IN gameId int, IN raceId int, IN horseId int, IN position int, IN going int)
+BEGIN
+	DELETE FROM HORSE_FORM WHERE GAME_ID= gameId AND RACE_ID= raceId AND HORSE_ID=horseId;
+
+	INSERT INTO HORSE_FORM (HORSE_ID, RACE_ID, GAME_ID, POSITION, RACE_INDEX, GOING)
+		VALUES (horseId,raceId,gameId,position,0,going);
+
+END;
+
+create definer = team@localhost procedure setPlayerState(IN pid int, IN gid int, IN s int)
+BEGIN
+	DELETE FROM PLAYER_STATES WHERE PLAYER_ID=pid AND GAME_ID=gid;
+
+	INSERT INTO PLAYER_STATES (PLAYER_ID, GAME_ID, STATE)
+		VALUES(pid,gid,s);
+END;
+
+create definer = team@localhost procedure storeBet(IN playerId int, IN horseId int, IN raceId int, IN gameId int, IN betType int, IN amount int, IN odss float)
+BEGIN
+    DELETE FROM BETS WHERE
+        PLAYER_ID = playerId AND HORSE_ID = horseId
+        AND RACE_ID = raceId AND GAME_ID = gameId AND TYPE = betType;
+
+	if (amount >= 0) then
+		INSERT INTO BETS (PLAYER_ID, HORSE_ID, RACE_ID, GAME_ID, AMOUNT, TYPE, ODDS) VALUES
+            (playerId, horseId, raceId, gameId, amount, betType, odds);
+	end if;
+END;
+
+create definer = team@localhost procedure updateGameIndexes(IN race_n int, IN meeting_n int, IN gid int)
+BEGIN
+    UPDATE GAMES SET RACE_INDEX = race_n, MEETING_INDEX = meeting_n WHERE ID = gid;
+END;
+

@@ -601,14 +601,22 @@ DELIMITER ;
 
 DELIMITER $$
 
+drop procedure getRaceInfo$$
+
+
+DELIMITER ;
+DELIMITER $$
 create procedure getRaceInfo(IN raceId int, IN gameId int)
 BEGIN
-select GM.MEETING_ID as ID, R.NAME as NAME, R.LENGTH_FURLONGS, R.PRIZE, GM.GOING, GM.MEETING_STATE
+select GM.MEETING_ID as ID, R.NAME as NAME, R.LENGTH_FURLONGS, R.PRIZE, GM.GOING, GM.MEETING_STATE, M.NAME AS MEETING_NAME
         from GAME_MEETINGS GM
         inner join MEETING_RACES MR on MR.MEETING_ID = GM.MEETING_ID
         inner join RACES R on MR.RACE_ID = R.ID
+        inner join MEETINGS M on GM.MEETING_ID = M.ID
         WHERE MR.RACE_ID = raceId and GM.GAME_ID = gameId;
 END$$
+
+
 DELIMITER ;
 
 DELIMITER $$
@@ -652,7 +660,14 @@ DELIMITER ;
 
 DELIMITER $$
 
-create procedure storeBet(IN playerId int, IN horseId int, IN raceId int, IN gameId int, IN betType int, IN amount int, IN odss float)
+DELIMITER $$
+drop procedure storeBet$$
+DELIMITER ;
+
+DELIMITER $$
+
+create procedure storeBet(IN playerId int, IN horseId int, IN raceId int, IN gameId int,
+                                                IN betType int, IN amount int, IN odds float)
 BEGIN
     DELETE FROM BETS WHERE
         PLAYER_ID = playerId AND HORSE_ID = horseId

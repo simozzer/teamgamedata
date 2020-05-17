@@ -74,6 +74,13 @@ getUsers = async (connection) => {
 }
 
 
+getRobots = async (connection) => {
+    const sql = 'CALL getRobots()';
+    return await executeQuery(connection,sql);
+}
+
+
+
 getGame = async (connection,id) => {
     const sql = 'CALL getGame(?)';
     return await executeQuery(connection,sql, [id]).then((rows) => {
@@ -99,6 +106,11 @@ updateGameIndexes = async (connection,gameId, meeting_index, race_index) => {
 setPlayerState = async(connection, gameId, playerId, state) => {
     const query = 'CALL setPlayerState(?,?,?)';
     return await executeQuery(connection,query,[playerId,gameId,state]);
+}
+
+setGameState = async(connection, gameId, state)  => {
+    const query = 'CALL setGameStatus(?,?)';
+    return await executeQuery(connection,query,[gameId,state]);
 }
 
 
@@ -643,15 +655,19 @@ app.delete('/game/:name', async (req, res) => {
 
 
 /**
- * Store a game
+ * update game status
  */
-app.put('/game/:id', async (req, res) => {
+app.put('/gameState', async (req, res) => {
     let connection = await getConnection();
     try {
         let obj = req.body;
-        delete obj.ID;
-        let game = await updateGame(connection,obj);
-        res.send(game);
+        await setGameState(connection,obj.ID, obj.STATE).then( data => {
+            res.send(data);
+        }, err => {
+            console.log("error setting game status: " + err);
+            res.send(false);
+        });
+
     }  finally {
         connection.release()
     }
@@ -770,6 +786,25 @@ app.get('/users', async(req,res) => {
     let connection = await getConnection();
     try {
         let users = await getUsers(connection);
+        if (users && users.length) {
+            res.send(users[0]);
+        } else {
+            res.send([]);
+        }
+    } finally {
+        connection.release()
+    }
+});
+
+
+
+/**
+ * Get a list of robotss
+ */
+app.get('/robots', async(req,res) => {
+    let connection = await getConnection();
+    try {
+        let users = await getRobots(connection);
         if (users && users.length) {
             res.send(users[0]);
         } else {
@@ -1117,18 +1152,15 @@ app.get('/bets/game/:gameId/race/:raceId', async(req,resp) => {
     }
 });
 
-
-
 /**
- * set state for a player
+ * get state for a player
  */
-app.post('/plyrState/:playerId/game/:gameId/state/:stateVal', async(req,resp) => {
+app.get('/plyrState/:playerId/game/:gameId', async(req,resp) => {
     const gameId = req.params.gameId;
     const playerId = req.params.playerId;
-    const state = req.params.stateVal;
     const connection = await getConnection();
     try {
-        await setPlayerState(connection,gameId,playerId,state).catch( err => {
+        await getPlayerState(connection,gameId,playerId).catch( err => {
             console.log("Error fetching player state: " + err);
             resp.send();
         }).then((data) => {
@@ -1141,14 +1173,15 @@ app.post('/plyrState/:playerId/game/:gameId/state/:stateVal', async(req,resp) =>
 
 
 /**
- * get state for a player
+ * set state for a player
  */
-app.get('/plyrState/:playerId/game/:gameId', async(req,resp) => {
-    const gameId = req.params.gameId;
-    const playerId = req.params.playerId;
+app.post('/playerState', async(req,resp) => {
+    const gameId = req.body.gameId;
+    const playerId = req.body.playerId;
+    const state = req.body.stateVal;
     const connection = await getConnection();
     try {
-        await getPlayerState(connection,gameId,playerId).catch( err => {
+        await setPlayerState(connection,gameId,playerId,state).catch( err => {
             console.log("Error fetching player state: " + err);
             resp.send();
         }).then((data) => {

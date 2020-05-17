@@ -13,9 +13,9 @@ VALUES('team','%',PASSWORD('team'),'','','');
 
 FLUSH PRIVILEGES;
 
-GRANT ALL PRIVILEGES ON teamGames.* to team@localhost identified by 'team';
+GRANT ALL PRIVILEGES ON teamGames.* to simon@localhost identified by 'team';
 
-GRANT ALL PRIVILEGES ON teamGames.* to team@% identified by 'team';
+GRANT ALL PRIVILEGES ON teamGames.* to simon@% identified by 'team';
 
 FLUSH PRIVILEGES;
 

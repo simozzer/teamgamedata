@@ -612,7 +612,7 @@ END$$
 DELIMITER ;
 
 DELIMITER $$
-drop procedure setGameStatus;
+drop procedure setGameStatus$$
 DELIMITER ;
 
 DELIMITER $$

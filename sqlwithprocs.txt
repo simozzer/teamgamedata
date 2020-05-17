@@ -138,6 +138,7 @@ create table if not exists USERS
 		primary key,
 	NAME varchar(255) not null,
 	PASSWORD varchar(255) not null,
+	HUMAN tinyint(1) default 1 not null,
 	constraint NAME
 		unique (NAME)
 );

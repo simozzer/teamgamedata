@@ -657,7 +657,7 @@ DELIMITER $$
 create procedure getRobots()
 BEGIN
   SELECT ID, NAME, HUMAN FROM USERS WHERE HUMAN=false;
-END$$;
+END$$
 DELIMITER ;
 DELIMITER: $$
 

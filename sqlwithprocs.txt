@@ -685,7 +685,7 @@ DELIMITER $$
 
 create procedure getUsers()
 BEGIN
-  SELECT ID, NAME FROM USERS;
+  SELECT ID, NAME, HUMAN FROM USERS;
 END$$
 DELIMITER ;
 drop procedure if exists saveHorseForm;

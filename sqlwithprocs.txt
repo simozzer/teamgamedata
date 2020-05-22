@@ -1,4 +1,22 @@
-create schema if not exists teamGames collate latin1;
+
+drop table if exists BETS;
+drop table if exists HORSES_IN_RACE;
+drop table if exists GAME_MEETINGS;
+drop table if exists HORSE_FORM;
+drop table if exists HORSE_OWNERSHIP;
+drop table if exists PLAYER_STATES;
+drop table if exists MEETING_RACES;
+drop table if exists GAME_PLAYERS;
+drop table if exists GAMES;
+drop table if exists MEETINGS;
+drop table if exists RACES;
+drop table if exists USER_ROLES;
+drop table if exists USER_STATE_TYPES;
+drop table if exists PLAYER_STATES;
+drop table if exists HORSES;
+drop table if exists USERS;
+drop table if exists GOING_TYPES;
+drop table if exists ROLES;
 
 create table if not exists GAMES
 (
@@ -9,6 +27,7 @@ create table if not exists GAMES
 	MEETING_INDEX int default -1 not null,
 	RACE_INDEX int default -1 not null,
 	OWNER_ID int not null,
+	PASSWORD varchar(512) default "",
 	constraint NAME
 		unique (NAME)
 );
@@ -365,6 +384,7 @@ INSERT INTO  USERS (NAME,PASSWORD,HUMAN) VALUES ("Big Bad Bob",Password(""),fals
 INSERT INTO  USERS (NAME,PASSWORD,HUMAN) VALUES ("Mr Bob",Password(""),false);
 INSERT INTO  USERS (NAME,PASSWORD,HUMAN) VALUES ("Mrs Bob",Password(""),false);
 
+drop procedure if exists addGame;
 DELIMITER $$
 create procedure addGame(IN n varchar(255), IN ownerId int)
 BEGIN
@@ -378,6 +398,7 @@ BEGIN
 END$$
 DELIMITER ;
 
+drop procedure if exists addHorseForPlayer;
 DELIMITER $$
 create procedure addHorseForPlayer(IN hname varchar(255), IN htype int, IN speedFactor float, IN slowFactor float, IN eFall int, IN goingType int, IN gid int, IN pid int)
 BEGIN
@@ -390,6 +411,7 @@ BEGIN
 END$$
 DELIMITER ;
 
+drop procedure if exists addHorseToRace;
 DELIMITER $$
 
 create procedure addHorseToRace(IN gameId int, IN raceId int, IN horseId int, IN playerId int)
@@ -400,14 +422,14 @@ BEGIN
             VALUES ( gameId, raceId, horseId, playerId );
 END$$
 DELIMITER ;
-
+drop procedure if exists addPlayerToGame;
 DELIMITER $$
 create procedure addPlayerToGame(IN pid int, IN gid int)
 BEGIN
     INSERT INTO GAME_PLAYERS (GAME_ID, PLAYER_ID, FUNDS ) VALUES ( gid, pid,0);
 END$$
 DELIMITER ;
-
+drop procedure if exists addUser;
 DELIMITER $$
 create procedure addUser(IN n varchar(255), IN p varchar(255))
 BEGIN
@@ -416,7 +438,7 @@ BEGIN
 	SELECT ID, NAME FROM USERS WHERE ID = (SELECT LAST_INSERT_ID());
 END$$
 DELIMITER ;
-
+drop procedure if exists adjustPlayerFunds;
 DELIMITER $$
 
 create procedure adjustPlayerFunds(IN gameId int, IN playerId int, IN adjustment int)
@@ -424,7 +446,7 @@ BEGIN
 	UPDATE GAME_PLAYERS SET FUNDS = FUNDS + adjustment WHERE GAME_ID= gameId AND PLAYER_ID= playerId;
 END$$
 DELIMITER ;
-
+drop procedure if exists authenticate;
 DELIMITER $$
 
 create procedure authenticate(IN n varchar(255), IN p varchar(255))
@@ -432,7 +454,7 @@ BEGIN
 	SELECT ID,NAME FROM USERS WHERE NAME=UPPER(n) AND PASSWORD=PASSWORD(p);
 END$$
 DELIMITER ;
-
+drop procedure if exists clearBetsForRace;
 DELIMITER $$
 
 create procedure clearBetsForRace(IN gameId int, IN raceId int)
@@ -440,7 +462,7 @@ BEGIN
 	DELETE FROM BETS WHERE GAME_ID=gameId AND RACE_ID=raceId;
 END$$
 DELIMITER ;
-
+drop procedure if exists clearPlayerHorseSelectionForMeeting;
 DELIMITER $$
 
 create procedure clearPlayerHorseSelectionForMeeting(IN playerId int, IN gameId int, IN meetingId int)
@@ -449,7 +471,7 @@ BEGIN
     and GAME_ID=gameId and PLAYER_ID=playerId;
 END$$
 DELIMITER ;
-
+drop procedure if exists deleteGame;
 DELIMITER $$
 
 create procedure deleteGame(IN gameName varchar(255))
@@ -457,7 +479,7 @@ BEGIN
   DELETE FROM GAMES WHERE NAME = gameName;
 END$$
 DELIMITER ;
-
+drop procedure if exists deleteHorsesForPlayer;
 DELIMITER $$
 
 create procedure deleteHorsesForPlayer(IN gid int, IN pid int)
@@ -465,7 +487,7 @@ BEGIN
 DELETE FROM HORSES WHERE HORSES.ID IN (SELECT HORSE_ID FROM HORSE_OWNERSHIP where GAME_ID = gid and PLAYER_ID = pid);
 END$$
 DELIMITER ;
-
+drop procedure if exists deletePlayerFromGame;
 DELIMITER $$
 
 create procedure deletePlayerFromGame(IN gid int, IN pid int)
@@ -473,7 +495,7 @@ BEGIN
     DELETE FROM GAME_PLAYERS WHERE GAME_ID = gid AND PLAYER_ID = pid;
 END$$
 DELIMITER ;
-
+drop procedure if exists getBetsForRace;
 DELIMITER $$
 
 create procedure getBetsForRace(IN raceId int, IN gameId int)
@@ -484,7 +506,7 @@ BEGIN
 	WHERE B.RACE_ID=raceId AND B.GAME_ID = gameId;
 END$$
 DELIMITER ;
-
+drop procedure if exists getGame;
 DELIMITER $$
 
 create procedure getGame(IN gameId int)
@@ -493,7 +515,7 @@ SELECT G.ID,G.NAME, G.STATE, G.MEETING_INDEX, G.RACE_INDEX, G.OWNER_ID as MASTER
         WHERE G.ID = gameId;
 END$$
 DELIMITER ;
-
+drop procedure if exists getGames;
 DELIMITER $$
 
 create procedure getGames()
@@ -501,7 +523,7 @@ BEGIN
 	SELECT ID, NAME, STATE, MEETING_INDEX, RACE_INDEX, OWNER_ID FROM GAMES;
 END$$
 DELIMITER ;
-
+drop procedure if exists getHorseForm;
 DELIMITER $$
 
 create procedure getHorseForm(IN gid int, IN hid int)
@@ -512,7 +534,7 @@ BEGIN
         WHERE GAME_ID=gid and HORSE_ID = hid;
 END$$
 DELIMITER ;
-
+drop procedure if exists getHorsesForPlayer;
 DELIMITER $$
 
 create procedure getHorsesForPlayer(IN gid int, IN pid int)
@@ -522,7 +544,7 @@ INNER JOIN HORSE_OWNERSHIP HO on H.ID = HO.HORSE_ID
 WHERE HO.PLAYER_ID = pid AND HO.GAME_ID = gid;
 END$$
 DELIMITER ;
-
+drop procedure if exists getHorsesForRace;
 DELIMITER $$
 
 create procedure getHorsesForRace(IN raceId int, IN gameId int)
@@ -534,7 +556,7 @@ WHERE HR.RACE_ID = raceId AND HR.GAME_ID = gameId;
 
 END$$
 DELIMITER ;
-
+drop procedure if exists getMeetings;
 DELIMITER $$
 
 create procedure getMeetings(IN gameId int)
@@ -544,7 +566,7 @@ SELECT GM.MEETING_ID as ID, M.NAME AS NAME, GM.GOING, GM.MEETING_STATE from GAME
     WHERE GM.GAME_ID = gameId;
 END$$
 DELIMITER ;
-
+drop procedure if exists getPlayerBetsForRace;
 DELIMITER $$
 
 create procedure getPlayerBetsForRace(IN raceId int, IN gameId int, IN playerId int)
@@ -555,7 +577,7 @@ BEGIN
 	WHERE B.RACE_ID=raceId AND B.GAME_ID = gameId AND B.PLAYER_ID = playerId;
 END$$
 DELIMITER ;
-
+drop procedure if exists getPlayerFunds;
 DELIMITER $$
 
 create procedure getPlayerFunds(IN gameId int, IN playerId int)
@@ -563,11 +585,12 @@ BEGIN
 	SELECT FUNDS FROM GAME_PLAYERS WHERE GAME_ID=gameId AND PLAYER_ID=playerId;
 END$$
 DELIMITER ;
+drop procedure if exists getPlayerHorsesForMeeting;
 
 DELIMITER $$
-drop procedure getPlayerHorsesForMeeting$$
-DELIMITER ;
 
+DELIMITER ;
+drop procedure if exists getPlayerHorsesForMeeting;
 DELIMITER $$
 create procedure getPlayerHorsesForMeeting(IN mid int, IN pid int, IN gid int)
 BEGIN
@@ -578,7 +601,7 @@ BEGIN
 END$$
 
 DELIMITER ;
-
+drop procedure if exists getPlayerState;
 DELIMITER $$
 
 create procedure getPlayerState(IN gid int, IN pid int)
@@ -586,18 +609,19 @@ BEGIN
 	SELECT STATE FROM PLAYER_STATES  WHERE PLAYER=pid AND GAME_ID=gid;
 END$$
 DELIMITER ;
-
+drop procedure if exists getPlayersInGame;
 DELIMITER $$
 
 create procedure getPlayersInGame(IN gid int)
 BEGIN
-SELECT GAME_PLAYERS.PLAYER_ID, GAME_PLAYERS.FUNDS, U.NAME as NAME, U.HUMAN as HUMAN FROM GAME_PLAYERS
+SELECT GAME_PLAYERS.PLAYER_ID, GAME_PLAYERS.FUNDS, U.NAME as NAME, U.HUMAN as HUMAN, PS.STATE  FROM GAME_PLAYERS
     INNER JOIN USERS U on GAME_PLAYERS.PLAYER_ID = U.ID
     INNER JOIN GAMES G on GAME_PLAYERS.GAME_ID = G.ID
+    INNER JOIN PLAYER_STATES PS on G.ID = PS.GAME_ID and (PS.PLAYER_ID = GAME_PLAYERS.PLAYER_ID)
     WHERE G.ID = gid;
 END$$
 DELIMITER ;
-
+drop procedure if exists getPlayersWithoutSelections;
 DELIMITER $$
 
 create procedure getPlayersWithoutSelections(IN meetingId int, IN gameId int)
@@ -611,7 +635,7 @@ SELECT PLAYER_ID, U2.NAME as PLAYER_NAME FROM GAME_PLAYERS G
         AND RACE_ID IN (SELECT RACE_ID FROM MEETING_RACES WHERE MEETING_ID = meetingId));
 END$$
 DELIMITER ;
-
+drop procedure if exists getGameStatus;
 DELIMITER $$
 drop procedure setGameStatus$$
 DELIMITER ;
@@ -624,12 +648,8 @@ END$$
 
 
 DELIMITER ;
-DELIMITER $$
+drop procedure if exists getRaceInfo;
 
-drop procedure getRaceInfo$$
-
-
-DELIMITER ;
 DELIMITER $$
 create procedure getRaceInfo(IN raceId int, IN gameId int)
 BEGIN
@@ -643,7 +663,7 @@ END$$
 
 
 DELIMITER ;
-
+drop procedure if exists getRacesInMeeting;
 DELIMITER $$
 
 create procedure getRacesInMeeting(IN meetingId int)
@@ -652,7 +672,7 @@ SELECT R.ID,R.NAME,R.LENGTH_FURLONGS,R.PRIZE FROM RACES R
 	WHERE R.ID IN (SELECT RACE_ID FROM MEETING_RACES WHERE MEETING_ID = meetingId);
 END$$
 DELIMITER ;
-
+drop procedure if exists getRobots;
 DELIMITER $$
 
 create procedure getRobots()
@@ -660,6 +680,7 @@ BEGIN
   SELECT ID, NAME, HUMAN FROM USERS WHERE HUMAN=false;
 END$$
 DELIMITER ;
+drop procedure if exists getUsers;
 DELIMITER $$
 
 create procedure getUsers()
@@ -667,7 +688,7 @@ BEGIN
   SELECT ID, NAME FROM USERS;
 END$$
 DELIMITER ;
-
+drop procedure if exists saveHorseForm;
 DELIMITER $$
 
 create procedure saveHorseForm(IN gameId int, IN raceId int, IN horseId int, IN position int, IN going int)
@@ -678,7 +699,7 @@ BEGIN
 		VALUES (horseId,raceId,gameId,position,0,going);
 END$$
 DELIMITER ;
-
+drop procedure if exists setPlayerState;
 DELIMITER $$
 
 create procedure setPlayerState(IN pid int, IN gid int, IN s int)
@@ -689,12 +710,7 @@ BEGIN
 		VALUES(pid,gid,s);
 END$$
 DELIMITER ;
-
-DELIMITER $$
-
-DELIMITER $$
-drop procedure storeBet$$
-DELIMITER ;
+drop procedure if exists storeBet;
 
 DELIMITER $$
 
@@ -705,13 +721,13 @@ BEGIN
         PLAYER_ID = playerId AND HORSE_ID = horseId
         AND RACE_ID = raceId AND GAME_ID = gameId AND TYPE = betType;
 
-	if (amount >= 0) then
+	if (amount > 0) then
 		INSERT INTO BETS (PLAYER_ID, HORSE_ID, RACE_ID, GAME_ID, AMOUNT, TYPE, ODDS) VALUES
             (playerId, horseId, raceId, gameId, amount, betType, odds);
 	end if;
 END$$
 DELIMITER ;
-
+drop procedure if exists updateGameIndexes;
 DELIMITER $$
 
 create procedure updateGameIndexes(IN race_n int, IN meeting_n int, IN gid int)

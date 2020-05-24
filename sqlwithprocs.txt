@@ -493,6 +493,9 @@ DELIMITER $$
 create procedure deletePlayerFromGame(IN gid int, IN pid int)
 BEGIN
     DELETE FROM GAME_PLAYERS WHERE GAME_ID = gid AND PLAYER_ID = pid;
+    delete from HORSES where ID in (SELECT HORSE_ID from HORSE_OWNERSHIP where GAME_ID = gid aND PLAYER_ID = pid);
+    DELETE FROM HORSE_OWNERSHIP where GAME_ID = gid aND PLAYER_ID = pid;
+    delete FROM PLAYER_STATES where GAME_ID = gid aND PLAYER_ID = pid;
 END$$
 DELIMITER ;
 drop procedure if exists getBetsForRace;

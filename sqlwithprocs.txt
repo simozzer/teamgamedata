@@ -736,3 +736,12 @@ BEGIN
 END;
 $$
 
+DELIMITER ;
+drop procedure if exists  deleteHorse;
+
+DELIMITER $$
+create procedure deleteHorse(IN horseId INT) BEGIN
+    DELETE FROM HORSES WHERE ID = horseId;
+END$$
+DELIMITER ;
+

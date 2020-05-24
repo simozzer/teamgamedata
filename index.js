@@ -244,6 +244,19 @@ authenticate =  async (connection,userName,password) => {
 }
 
 
+deleteHorse = async (connection, horseId) => {
+    const sql = 'CALL deleteHorse(?)';
+    return await executeQuery(connection, sql, [horseId]).then((rows) => {
+        if (rows && rows.length && rows[0].length) {
+            return rows[0];
+        } else {
+            return [];
+        }
+    }).catch(err => {
+        console.log('Error adding game: ' + err);
+    });
+}
+
 getHorsesForPlayer = async (connection, gameId, playerId) => {
     const sql = 'CALL getHorsesForPlayer(?,?)';
     return await executeQuery(connection, sql, [gameId, playerId]).then((rows) => {
@@ -292,6 +305,27 @@ saveHorsesForPlayer = async (connection, gameId, playerId, horses) => {
 
     return true;
 }
+
+
+
+saveHorseForPlayer = async (connection, gameId, playerId, horse) => {
+    query = 'CALL addHorseForPlayer(?, ?,?,?,?,?,?,?)';
+
+    await executeQuery(connection,query, [
+        horse.NAME,
+        horse.HORSE_TYPE,
+        horse.SPEED_FACTOR,
+        horse.SLOWER_SPEED_FACTOR,
+        horse.ENERGY_FALL_DISTANCE,
+        horse.GOING_TYPE,
+        gameId,
+        playerId]).catch( (err) => {
+        throw "Failed to insert horse details: " + err;
+    });
+    return true;
+}
+
+
 
 
 /**
@@ -872,6 +906,21 @@ app.get("/game/:gameId/horsesFor/:playerId", async(req,res) => {
     }
 });
 
+app.delete("/horses/:horseId", async(req,res) => {
+   let horseId = req.params.horseId;
+   let connection = await getConnection();
+    try {
+        await deleteHorse(connection, horseId).then((response) => {
+            res.send(response);
+        }).catch((err) => {
+            console.log("error deleting horse: " + err);;
+            return false;
+        });
+    } finally {
+        connection.release()
+    }
+});
+
 
 
 
@@ -939,6 +988,26 @@ app.post("/game/:gameId/horsesFor/:playerId", async(req,res) => {
     }
 });
 
+
+/**
+ * Save horse for player
+ */
+app.post("/game/:gameId/horseFor/:playerId", async(req,res) => {
+    let gameId = req.params.gameId;
+    let playerId = req.params.playerId;
+    let horse = req.body;
+    let connection = await getConnection();
+    try {
+        await saveHorseForPlayer(connection,gameId,playerId, horse).then((response) => {
+            res.send(response);
+        }).catch((err) => {
+            console.log("error saving horse for player");
+            return false;
+        });
+    } finally {
+        connection.release()
+    }
+});
 
 
 

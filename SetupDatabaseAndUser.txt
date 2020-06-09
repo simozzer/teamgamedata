@@ -1,0 +1,20 @@
+mysql -u root -p
+
+UPDATE mysql.user SET Password = PASSWORD('<< your value here>>') WHERE User = 'root';
+
+FLUSH PRIVILEGES;
+
+CREATE DATABASE teamGames;
+
+INSERT INTO mysql.user (User,Host,authentication_string,ssl_cipher,x509_issuer,x509_subject) VALUES('team','localhost',PASSWORD('team'),'','','');
+
+INSERT INTO mysql.user (User,Host,authentication_string,ssl_cipher,x509_issuer,x509_subject)
+VALUES('team','%',PASSWORD('team'),'','','');
+
+FLUSH PRIVILEGES;
+
+GRANT ALL PRIVILEGES ON teamGames.* to team@localhost identified by 'team';
+
+GRANT ALL PRIVILEGES ON teamGames.* to team@'%' identified by 'team';
+
+FLUSH PRIVILEGES;
